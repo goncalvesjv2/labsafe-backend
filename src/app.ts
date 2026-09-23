@@ -10,4 +10,4 @@ app.register(fastifyCors, {
 })
 
 app.register(userRoutes, { prefix: '/api' });
-app.register(authRoutes, { prefix: '/api' });
+app.register(authRoutes, { prefix: '/auth' });
