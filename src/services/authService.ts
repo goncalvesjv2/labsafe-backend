@@ -6,7 +6,7 @@ export async function loginService(email: string, password: string) {
     const isExistUser = await listUserByEmailRepository(email);
 
     if (!isExistUser) {
-        throw new Error("O usuário não existe");
+        throw new Error("E-mail ou senha inválidos");
     }
 
     const passwordValidate = await bcrypt.compare(password, isExistUser.senha);
@@ -15,6 +15,6 @@ export async function loginService(email: string, password: string) {
         const token = generateToken(isExistUser);
         return token;
     } else {
-        throw new Error("E-mail ou senha inválido");
+        throw new Error("E-mail ou senha inválidos");
     }
 }
