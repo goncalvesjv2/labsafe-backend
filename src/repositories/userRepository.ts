@@ -47,7 +47,7 @@ export async function createUserRepository(user: ICreateUser, password: string) 
     const client = await connect();
 
     try {
-        const sql = "INSERT INTO usuario (nome, email, senha, role) VALUES ($1, $2, $3, $4) RETURNING *";
+        const sql = "INSERT INTO usuario (name, email, senha, role) VALUES ($1, $2, $3, $4) RETURNING *";
         const values = [user.name, user.email, password, user.role];
         const res = await client.query(sql, values);
         return res.rows[0];
@@ -62,7 +62,7 @@ export async function updateUserRepository(id: number, user: ICreateUser, passwo
     const client = await connect();
 
     try {
-        const sql = "UPDATE usuario SET nome=$1, email=$2, senha=$3, role=$4 WHERE id=$5 RETURNING *";
+        const sql = "UPDATE usuario SET name=$1, email=$2, senha=$3, role=$4 WHERE id=$5 RETURNING *";
         const values = [user.name, user.email, password, user.role, id];
         const res = await client.query(sql, values);
         return res.rows[0];
