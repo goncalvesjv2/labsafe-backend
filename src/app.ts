@@ -9,6 +9,7 @@ export const app = Fastify({ logger: true });
 
 app.register(fastifyCors, {
     origin: "*",
+    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"]
 })
 
 const secretJWT = process.env.JWT_SECRET;
