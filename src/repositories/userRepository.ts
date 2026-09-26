@@ -77,9 +77,9 @@ export async function deleteUserRepository(id: number) {
     const client = await connect();
 
     try {
-        const sql = "DELETE FROM usuario WHERE id=$1";
+        const sql = "DELETE FROM usuario WHERE id=$1 RETURNING *";
         const res = await client.query(sql, [id]);
-        return res.rows;
+        return res.rows[0];
     } catch (error) {
         console.error(error);
     } finally {
