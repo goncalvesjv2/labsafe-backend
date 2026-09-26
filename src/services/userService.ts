@@ -40,15 +40,20 @@ export async function createUserService(user: ICreateUser) {
 }
 
 export async function updateUserService(id: number, user: ICreateUser) {
-    if (!user.name || !user.email || !user.password || !user.role) {
-        throw new Error("Todos os campos são obrigatórios");
+    if (!user.name || !user.email || !user.role) {
+        throw new Error("Nome, e-mail e cargo são obrigatórios");
     }
     
     if (user.role !== UserRole.ADMIN && user.role !== UserRole.ALUNO && user.role !== UserRole.PROFESSOR) {
         throw new Error("Esse role não é válido");
     }
+
+    let passwordHash = "";
     
-    const passwordHash = await bcrypt.hash(user.password, 10);
+    if (user.password) {
+        passwordHash = await bcrypt.hash(user.password, 10);
+    }
+
     const updateUser = await updateUserRepository(id, user, passwordHash);
     
     if (!updateUser) {

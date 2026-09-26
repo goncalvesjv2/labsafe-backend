@@ -62,7 +62,7 @@ export async function updateUserRepository(id: number, user: ICreateUser, passwo
     const client = await connect();
 
     try {
-        const sql = "UPDATE usuario SET name=$1, email=$2, senha=$3, role=$4 WHERE id=$5 RETURNING *";
+        const sql = "UPDATE usuario SET name=$1, email=$2, senha=COALESCE(NULLIF($3, ''), senha), role=$4 WHERE id=$5 RETURNING *";
         const values = [user.name, user.email, password, user.role, id];
         const res = await client.query(sql, values);
         return res.rows[0];
