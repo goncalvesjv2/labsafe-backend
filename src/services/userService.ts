@@ -77,18 +77,12 @@ export async function updateUserService(id: number, user: ICreateUser, userId: n
     return updateUser;
 }
 
-export async function deleteUserService(id: number, userId: number) {
+export async function deleteUserService(id: number) {
     const deleteUser = await deleteUserRepository(id);
     
     if (!deleteUser) {
         throw new Error("Usuário não encontrado");
     }
-
-    await createLogService({
-        userId: userId,
-        action: "EXCLUSAO_USUARIO",
-        description: `O usuário com e-mail ${deleteUser.email} foi excluído`
-    });
 
     return deleteUser;
 }

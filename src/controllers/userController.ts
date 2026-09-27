@@ -48,8 +48,7 @@ export async function updateUserController(request: FastifyRequest<{Params: {id:
 export async function deleteUserController(request: FastifyRequest<{Params: {id: number}}>, reply: FastifyReply) {
     try {
         const { id } = request.params;
-        const logged = request.user as IPayload;
-        await deleteUserService(id, logged.sub);
+        await deleteUserService(id);
         return reply.status(204).send();
     } catch (error) {
         return reply.status(400).send(error);
