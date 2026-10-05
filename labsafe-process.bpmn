@@ -12,9 +12,11 @@
 
   <bpmn:collaboration id="Collaboration_1">
     <bpmn:participant id="Participant_Student" name="Aluno" processRef="Process_Student"/>
+    <bpmn:participant id="Participant_Teacher" name="Professor" processRef="Process_Teacher"/>
     <bpmn:participant id="Participant_System" name="Sistema LabSafe" processRef="Process_System"/>
   </bpmn:collaboration>
 
+  <!-- Processo do Aluno -->
   <bpmn:process id="Process_Student" isExecutable="false">
     <bpmn:startEvent id="Event_StudentStart" name="Aluno acessa o sistema">
       <bpmn:outgoing>Flow_StudentLogin</bpmn:outgoing>
@@ -31,41 +33,73 @@
       <bpmn:outgoing>Flow_StudentContentDone</bpmn:outgoing>
     </bpmn:task>
 
-    <bpmn:task id="Task_StudentTakeTraining" name="Realizar treinamento">
+    <bpmn:task id="Task_StudentConsultReagents" name="Consultar reagentes (PubChem)">
       <bpmn:incoming>Flow_StudentContentDone</bpmn:incoming>
-      <bpmn:outgoing>Flow_StudentTrainingDone</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ReagentsConsulted</bpmn:outgoing>
     </bpmn:task>
 
-    <bpmn:task id="Task_StudentDoQuiz" name="Resolver questionário">
-      <bpmn:incoming>Flow_StudentTrainingDone</bpmn:incoming>
+    <bpmn:task id="Task_StudentTakeQuiz" name="Resolver questionário">
+      <bpmn:incoming>Flow_ReagentsConsulted</bpmn:incoming>
       <bpmn:outgoing>Flow_StudentQuizDone</bpmn:outgoing>
     </bpmn:task>
 
-    <bpmn:exclusiveGateway id="Gateway_StudentPass" name="Passou no teste?">
+    <bpmn:exclusiveGateway id="Gateway_StudentPass" name="Aprovado (≥60%)?">
       <bpmn:incoming>Flow_StudentQuizDone</bpmn:incoming>
       <bpmn:outgoing>Flow_StudentPassed</bpmn:outgoing>
       <bpmn:outgoing>Flow_StudentFailed</bpmn:outgoing>
     </bpmn:exclusiveGateway>
 
-    <bpmn:endEvent id="Event_StudentPassEnd" name="Teste concluído">
+    <bpmn:endEvent id="Event_StudentPassEnd" name="Teste concluído com sucesso">
       <bpmn:incoming>Flow_StudentPassed</bpmn:incoming>
     </bpmn:endEvent>
 
-    <bpmn:task id="Task_StudentRetrain" name="Refazer treinamento">
+    <bpmn:task id="Task_StudentRetrain" name="Refazer o conteúdo">
       <bpmn:incoming>Flow_StudentFailed</bpmn:incoming>
       <bpmn:outgoing>Flow_RetrainingLoop</bpmn:outgoing>
     </bpmn:task>
 
     <bpmn:sequenceFlow id="Flow_StudentLogin" sourceRef="Event_StudentStart" targetRef="Task_StudentLogin"/>
     <bpmn:sequenceFlow id="Flow_StudentLoginDone" sourceRef="Task_StudentLogin" targetRef="Task_StudentStudyContent"/>
-    <bpmn:sequenceFlow id="Flow_StudentContentDone" sourceRef="Task_StudentStudyContent" targetRef="Task_StudentTakeTraining"/>
-    <bpmn:sequenceFlow id="Flow_StudentTrainingDone" sourceRef="Task_StudentTakeTraining" targetRef="Task_StudentDoQuiz"/>
-    <bpmn:sequenceFlow id="Flow_StudentQuizDone" sourceRef="Task_StudentDoQuiz" targetRef="Gateway_StudentPass"/>
-    <bpmn:sequenceFlow id="Flow_StudentPassed" name="Sim (≥60%)" sourceRef="Gateway_StudentPass" targetRef="Event_StudentPassEnd"/>
-    <bpmn:sequenceFlow id="Flow_StudentFailed" name="Não (&lt;60%)" sourceRef="Gateway_StudentPass" targetRef="Task_StudentRetrain"/>
+    <bpmn:sequenceFlow id="Flow_StudentContentDone" sourceRef="Task_StudentStudyContent" targetRef="Task_StudentConsultReagents"/>
+    <bpmn:sequenceFlow id="Flow_ReagentsConsulted" sourceRef="Task_StudentConsultReagents" targetRef="Task_StudentTakeQuiz"/>
+    <bpmn:sequenceFlow id="Flow_StudentQuizDone" sourceRef="Task_StudentTakeQuiz" targetRef="Gateway_StudentPass"/>
+    <bpmn:sequenceFlow id="Flow_StudentPassed" name="Sim" sourceRef="Gateway_StudentPass" targetRef="Event_StudentPassEnd"/>
+    <bpmn:sequenceFlow id="Flow_StudentFailed" name="Não" sourceRef="Gateway_StudentPass" targetRef="Task_StudentRetrain"/>
     <bpmn:sequenceFlow id="Flow_RetrainingLoop" sourceRef="Task_StudentRetrain" targetRef="Task_StudentStudyContent"/>
   </bpmn:process>
 
+  <!-- Processo do Professor -->
+  <bpmn:process id="Process_Teacher" isExecutable="false">
+    <bpmn:startEvent id="Event_TeacherStart" name="Professor acessa o sistema">
+      <bpmn:outgoing>Flow_TeacherLogin</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:task id="Task_TeacherLogin" name="Fazer login">
+      <bpmn:incoming>Flow_TeacherLogin</bpmn:incoming>
+      <bpmn:outgoing>Flow_TeacherLoginDone</bpmn:outgoing>
+    </bpmn:task>
+
+    <bpmn:task id="Task_TeacherCreateContent" name="Criar conteúdo">
+      <bpmn:incoming>Flow_TeacherLoginDone</bpmn:incoming>
+      <bpmn:outgoing>Flow_ContentCreated</bpmn:outgoing>
+    </bpmn:task>
+
+    <bpmn:task id="Task_TeacherCreateQuiz" name="Criar questionário">
+      <bpmn:incoming>Flow_ContentCreated</bpmn:incoming>
+      <bpmn:outgoing>Flow_QuizCreated</bpmn:outgoing>
+    </bpmn:task>
+
+    <bpmn:endEvent id="Event_TeacherEnd" name="Materiais publicados">
+      <bpmn:incoming>Flow_QuizCreated</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="Flow_TeacherLogin" sourceRef="Event_TeacherStart" targetRef="Task_TeacherLogin"/>
+    <bpmn:sequenceFlow id="Flow_TeacherLoginDone" sourceRef="Task_TeacherLogin" targetRef="Task_TeacherCreateContent"/>
+    <bpmn:sequenceFlow id="Flow_ContentCreated" sourceRef="Task_TeacherCreateContent" targetRef="Task_TeacherCreateQuiz"/>
+    <bpmn:sequenceFlow id="Flow_QuizCreated" sourceRef="Task_TeacherCreateQuiz" targetRef="Event_TeacherEnd"/>
+  </bpmn:process>
+
+  <!-- Processo do Sistema -->
   <bpmn:process id="Process_System" isExecutable="false">
     <bpmn:startEvent id="Event_SystemStart" name="Sistema inicia">
       <bpmn:outgoing>Flow_SystemInit</bpmn:outgoing>
@@ -79,7 +113,8 @@
     <bpmn:exclusiveGateway id="Gateway_RequestType" name="Tipo de requisição?">
       <bpmn:incoming>Flow_RequestReceived</bpmn:incoming>
       <bpmn:outgoing>Flow_AuthRequest</bpmn:outgoing>
-      <bpmn:outgoing>Flow_UserRequest</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ContentRequest</bpmn:outgoing>
+      <bpmn:outgoing>Flow_QuizRequest</bpmn:outgoing>
       <bpmn:outgoing>Flow_PubChemRequest</bpmn:outgoing>
     </bpmn:exclusiveGateway>
 
@@ -88,19 +123,25 @@
       <bpmn:outgoing>Flow_AuthProcessed</bpmn:outgoing>
     </bpmn:task>
 
-    <bpmn:task id="Task_UserHandler" name="Processar usuário (CRUD)">
-      <bpmn:incoming>Flow_UserRequest</bpmn:incoming>
-      <bpmn:outgoing>Flow_UserProcessed</bpmn:outgoing>
+    <bpmn:task id="Task_ContentHandler" name="Processar conteúdo (CRUD)">
+      <bpmn:incoming>Flow_ContentRequest</bpmn:incoming>
+      <bpmn:outgoing>Flow_ContentProcessed</bpmn:outgoing>
     </bpmn:task>
 
-    <bpmn:task id="Task_PubChemHandler" name="Buscar dados PubChem">
+    <bpmn:task id="Task_QuizHandler" name="Processar questionário (CRUD)">
+      <bpmn:incoming>Flow_QuizRequest</bpmn:incoming>
+      <bpmn:outgoing>Flow_QuizProcessed</bpmn:outgoing>
+    </bpmn:task>
+
+    <bpmn:task id="Task_PubChemHandler" name="Buscar dados PubChem (API Externa)">
       <bpmn:incoming>Flow_PubChemRequest</bpmn:incoming>
       <bpmn:outgoing>Flow_PubChemProcessed</bpmn:outgoing>
     </bpmn:task>
 
     <bpmn:task id="Task_DatabaseQuery" name="Consultar/Atualizar BD (PostgreSQL)">
       <bpmn:incoming>Flow_AuthProcessed</bpmn:incoming>
-      <bpmn:incoming>Flow_UserProcessed</bpmn:incoming>
+      <bpmn:incoming>Flow_ContentProcessed</bpmn:incoming>
+      <bpmn:incoming>Flow_QuizProcessed</bpmn:incoming>
       <bpmn:outgoing>Flow_DatabaseDone</bpmn:outgoing>
     </bpmn:task>
 
@@ -117,10 +158,12 @@
     <bpmn:sequenceFlow id="Flow_SystemInit" sourceRef="Event_SystemStart" targetRef="Task_SystemListen"/>
     <bpmn:sequenceFlow id="Flow_RequestReceived" sourceRef="Task_SystemListen" targetRef="Gateway_RequestType"/>
     <bpmn:sequenceFlow id="Flow_AuthRequest" name="/auth" sourceRef="Gateway_RequestType" targetRef="Task_AuthHandler"/>
-    <bpmn:sequenceFlow id="Flow_UserRequest" name="/api/users" sourceRef="Gateway_RequestType" targetRef="Task_UserHandler"/>
+    <bpmn:sequenceFlow id="Flow_ContentRequest" name="/api/content" sourceRef="Gateway_RequestType" targetRef="Task_ContentHandler"/>
+    <bpmn:sequenceFlow id="Flow_QuizRequest" name="/api/quiz" sourceRef="Gateway_RequestType" targetRef="Task_QuizHandler"/>
     <bpmn:sequenceFlow id="Flow_PubChemRequest" name="/api/pubchem" sourceRef="Gateway_RequestType" targetRef="Task_PubChemHandler"/>
     <bpmn:sequenceFlow id="Flow_AuthProcessed" sourceRef="Task_AuthHandler" targetRef="Task_DatabaseQuery"/>
-    <bpmn:sequenceFlow id="Flow_UserProcessed" sourceRef="Task_UserHandler" targetRef="Task_DatabaseQuery"/>
+    <bpmn:sequenceFlow id="Flow_ContentProcessed" sourceRef="Task_ContentHandler" targetRef="Task_DatabaseQuery"/>
+    <bpmn:sequenceFlow id="Flow_QuizProcessed" sourceRef="Task_QuizHandler" targetRef="Task_DatabaseQuery"/>
     <bpmn:sequenceFlow id="Flow_PubChemProcessed" sourceRef="Task_PubChemHandler" targetRef="Task_SendResponse"/>
     <bpmn:sequenceFlow id="Flow_DatabaseDone" sourceRef="Task_DatabaseQuery" targetRef="Task_SendResponse"/>
     <bpmn:sequenceFlow id="Flow_ResponseSent" sourceRef="Task_SendResponse" targetRef="Event_SystemEnd"/>
@@ -129,15 +172,22 @@
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
     <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_1">
 
+      <!-- PARTICIPANT ALUNO -->
       <bpmndi:BPMNShape id="Participant_Student_di" bpmnElement="Participant_Student" isHorizontal="true">
-        <dc:Bounds x="100" y="40" width="800" height="400"/>
+        <dc:Bounds x="100" y="40" width="900" height="350"/>
       </bpmndi:BPMNShape>
 
+      <!-- PARTICIPANT PROFESSOR -->
+      <bpmndi:BPMNShape id="Participant_Teacher_di" bpmnElement="Participant_Teacher" isHorizontal="true">
+        <dc:Bounds x="100" y="420" width="900" height="280"/>
+      </bpmndi:BPMNShape>
+
+      <!-- PARTICIPANT SISTEMA -->
       <bpmndi:BPMNShape id="Participant_System_di" bpmnElement="Participant_System" isHorizontal="true">
-        <dc:Bounds x="100" y="480" width="900" height="380"/>
+        <dc:Bounds x="100" y="730" width="1000" height="400"/>
       </bpmndi:BPMNShape>
 
-      <!-- Student Process Shapes -->
+      <!-- STUDENT SHAPES -->
       <bpmndi:BPMNShape id="Event_StudentStart_di" bpmnElement="Event_StudentStart">
         <dc:Bounds x="150" y="130" width="36" height="36"/>
         <bpmndi:BPMNLabel>
@@ -146,223 +196,297 @@
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNShape id="Task_StudentLogin_di" bpmnElement="Task_StudentLogin">
-        <dc:Bounds x="230" y="110" width="100" height="80"/>
+        <dc:Bounds x="220" y="110" width="100" height="80"/>
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="250" y="145" width="60" height="14"/>
+          <dc:Bounds x="240" y="145" width="60" height="14"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNShape id="Task_StudentStudyContent_di" bpmnElement="Task_StudentStudyContent">
-        <dc:Bounds x="370" y="110" width="100" height="80"/>
+        <dc:Bounds x="350" y="110" width="100" height="80"/>
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="380" y="145" width="80" height="14"/>
+          <dc:Bounds x="360" y="145" width="80" height="14"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
 
-      <bpmndi:BPMNShape id="Task_StudentTakeTraining_di" bpmnElement="Task_StudentTakeTraining">
-        <dc:Bounds x="510" y="110" width="100" height="80"/>
+      <bpmndi:BPMNShape id="Task_StudentConsultReagents_di" bpmnElement="Task_StudentConsultReagents">
+        <dc:Bounds x="480" y="110" width="120" height="80"/>
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="515" y="145" width="90" height="14"/>
+          <dc:Bounds x="485" y="140" width="110" height="27"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
 
-      <bpmndi:BPMNShape id="Task_StudentDoQuiz_di" bpmnElement="Task_StudentDoQuiz">
-        <dc:Bounds x="650" y="110" width="100" height="80"/>
+      <bpmndi:BPMNShape id="Task_StudentTakeQuiz_di" bpmnElement="Task_StudentTakeQuiz">
+        <dc:Bounds x="630" y="110" width="100" height="80"/>
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="655" y="145" width="90" height="14"/>
+          <dc:Bounds x="635" y="145" width="90" height="14"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNShape id="Gateway_StudentPass_di" bpmnElement="Gateway_StudentPass" isMarkerVisible="true">
-        <dc:Bounds x="800" y="130" width="50" height="50"/>
+        <dc:Bounds x="780" y="130" width="50" height="50"/>
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="795" y="187" width="60" height="14"/>
+          <dc:Bounds x="770" y="187" width="70" height="14"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNShape id="Event_StudentPassEnd_di" bpmnElement="Event_StudentPassEnd">
-        <dc:Bounds x="810" y="240" width="36" height="36"/>
+        <dc:Bounds x="792" y="260" width="36" height="36"/>
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="787" y="276" width="82" height="14"/>
+          <dc:Bounds x="760" y="296" width="100" height="27"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNShape id="Task_StudentRetrain_di" bpmnElement="Task_StudentRetrain">
-        <dc:Bounds x="650" y="240" width="100" height="80"/>
+        <dc:Bounds x="630" y="260" width="100" height="80"/>
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="660" y="275" width="80" height="14"/>
+          <dc:Bounds x="638" y="295" width="84" height="14"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
 
-      <!-- Student Process Edges -->
       <bpmndi:BPMNEdge id="Flow_StudentLogin_di" bpmnElement="Flow_StudentLogin">
         <di:waypoint x="186" y="148"/>
-        <di:waypoint x="230" y="148"/>
+        <di:waypoint x="220" y="148"/>
       </bpmndi:BPMNEdge>
 
       <bpmndi:BPMNEdge id="Flow_StudentLoginDone_di" bpmnElement="Flow_StudentLoginDone">
-        <di:waypoint x="330" y="150"/>
-        <di:waypoint x="370" y="150"/>
+        <di:waypoint x="320" y="150"/>
+        <di:waypoint x="350" y="150"/>
       </bpmndi:BPMNEdge>
 
       <bpmndi:BPMNEdge id="Flow_StudentContentDone_di" bpmnElement="Flow_StudentContentDone">
-        <di:waypoint x="470" y="150"/>
-        <di:waypoint x="510" y="150"/>
+        <di:waypoint x="450" y="150"/>
+        <di:waypoint x="480" y="150"/>
       </bpmndi:BPMNEdge>
 
-      <bpmndi:BPMNEdge id="Flow_StudentTrainingDone_di" bpmnElement="Flow_StudentTrainingDone">
-        <di:waypoint x="610" y="150"/>
-        <di:waypoint x="650" y="150"/>
+      <bpmndi:BPMNEdge id="Flow_ReagentsConsulted_di" bpmnElement="Flow_ReagentsConsulted">
+        <di:waypoint x="600" y="150"/>
+        <di:waypoint x="630" y="150"/>
       </bpmndi:BPMNEdge>
 
       <bpmndi:BPMNEdge id="Flow_StudentQuizDone_di" bpmnElement="Flow_StudentQuizDone">
-        <di:waypoint x="750" y="150"/>
-        <di:waypoint x="800" y="155"/>
+        <di:waypoint x="730" y="150"/>
+        <di:waypoint x="780" y="155"/>
       </bpmndi:BPMNEdge>
 
       <bpmndi:BPMNEdge id="Flow_StudentPassed_di" bpmnElement="Flow_StudentPassed">
-        <di:waypoint x="825" y="180"/>
-        <di:waypoint x="828" y="240"/>
+        <di:waypoint x="805" y="180"/>
+        <di:waypoint x="810" y="260"/>
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="831" y="200" width="54" height="14"/>
+          <dc:Bounds x="815" y="215" width="15" height="14"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
 
       <bpmndi:BPMNEdge id="Flow_StudentFailed_di" bpmnElement="Flow_StudentFailed">
-        <di:waypoint x="800" y="155"/>
-        <di:waypoint x="750" y="280"/>
+        <di:waypoint x="780" y="155"/>
+        <di:waypoint x="730" y="300"/>
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="760" y="210" width="52" height="14"/>
+          <dc:Bounds x="745" y="220" width="15" height="14"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
 
       <bpmndi:BPMNEdge id="Flow_RetrainingLoop_di" bpmnElement="Flow_RetrainingLoop">
-        <di:waypoint x="650" y="280"/>
-        <di:waypoint x="420" y="190"/>
+        <di:waypoint x="630" y="300"/>
+        <di:waypoint x="400" y="190"/>
       </bpmndi:BPMNEdge>
 
-      <!-- System Process Shapes -->
-      <bpmndi:BPMNShape id="Event_SystemStart_di" bpmnElement="Event_SystemStart">
-        <dc:Bounds x="150" y="550" width="36" height="36"/>
+      <!-- PROFESSOR SHAPES -->
+      <bpmndi:BPMNShape id="Event_TeacherStart_di" bpmnElement="Event_TeacherStart">
+        <dc:Bounds x="150" y="510" width="36" height="36"/>
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="135" y="586" width="66" height="14"/>
+          <dc:Bounds x="125" y="546" width="86" height="27"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Task_TeacherLogin_di" bpmnElement="Task_TeacherLogin">
+        <dc:Bounds x="220" y="490" width="100" height="80"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="240" y="525" width="60" height="14"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Task_TeacherCreateContent_di" bpmnElement="Task_TeacherCreateContent">
+        <dc:Bounds x="350" y="490" width="100" height="80"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="360" y="525" width="80" height="14"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Task_TeacherCreateQuiz_di" bpmnElement="Task_TeacherCreateQuiz">
+        <dc:Bounds x="480" y="490" width="100" height="80"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="485" y="525" width="90" height="14"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Event_TeacherEnd_di" bpmnElement="Event_TeacherEnd">
+        <dc:Bounds x="630" y="510" width="36" height="36"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="610" y="546" width="76" height="14"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="Flow_TeacherLogin_di" bpmnElement="Flow_TeacherLogin">
+        <di:waypoint x="186" y="528"/>
+        <di:waypoint x="220" y="530"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_TeacherLoginDone_di" bpmnElement="Flow_TeacherLoginDone">
+        <di:waypoint x="320" y="530"/>
+        <di:waypoint x="350" y="530"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_ContentCreated_di" bpmnElement="Flow_ContentCreated">
+        <di:waypoint x="450" y="530"/>
+        <di:waypoint x="480" y="530"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_QuizCreated_di" bpmnElement="Flow_QuizCreated">
+        <di:waypoint x="580" y="530"/>
+        <di:waypoint x="630" y="528"/>
+      </bpmndi:BPMNEdge>
+
+      <!-- SYSTEM SHAPES -->
+      <bpmndi:BPMNShape id="Event_SystemStart_di" bpmnElement="Event_SystemStart">
+        <dc:Bounds x="150" y="800" width="36" height="36"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="135" y="836" width="66" height="14"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNShape id="Task_SystemListen_di" bpmnElement="Task_SystemListen">
-        <dc:Bounds x="230" y="530" width="140" height="80"/>
+        <dc:Bounds x="220" y="780" width="140" height="80"/>
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="240" y="560" width="120" height="27"/>
+          <dc:Bounds x="230" y="810" width="120" height="27"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNShape id="Gateway_RequestType_di" bpmnElement="Gateway_RequestType" isMarkerVisible="true">
-        <dc:Bounds x="420" y="550" width="50" height="50"/>
+        <dc:Bounds x="410" y="800" width="50" height="50"/>
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="410" y="520" width="70" height="14"/>
+          <dc:Bounds x="400" y="770" width="70" height="14"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNShape id="Task_AuthHandler_di" bpmnElement="Task_AuthHandler">
-        <dc:Bounds x="520" y="500" width="120" height="80"/>
+        <dc:Bounds x="510" y="760" width="120" height="80"/>
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="530" y="530" width="100" height="27"/>
+          <dc:Bounds x="520" y="790" width="100" height="27"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
 
-      <bpmndi:BPMNShape id="Task_UserHandler_di" bpmnElement="Task_UserHandler">
-        <dc:Bounds x="520" y="600" width="120" height="80"/>
+      <bpmndi:BPMNShape id="Task_ContentHandler_di" bpmnElement="Task_ContentHandler">
+        <dc:Bounds x="510" y="860" width="120" height="80"/>
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="535" y="630" width="90" height="27"/>
+          <dc:Bounds x="525" y="890" width="90" height="27"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Task_QuizHandler_di" bpmnElement="Task_QuizHandler">
+        <dc:Bounds x="510" y="960" width="120" height="80"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="520" y="990" width="100" height="27"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNShape id="Task_PubChemHandler_di" bpmnElement="Task_PubChemHandler">
-        <dc:Bounds x="520" y="700" width="120" height="80"/>
+        <dc:Bounds x="510" y="1060" width="130" height="80"/>
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="530" y="730" width="100" height="14"/>
+          <dc:Bounds x="520" y="1090" width="110" height="27"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNShape id="Task_DatabaseQuery_di" bpmnElement="Task_DatabaseQuery">
-        <dc:Bounds x="700" y="560" width="140" height="80"/>
+        <dc:Bounds x="700" y="860" width="140" height="80"/>
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="710" y="590" width="120" height="27"/>
+          <dc:Bounds x="710" y="890" width="120" height="27"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNShape id="Task_SendResponse_di" bpmnElement="Task_SendResponse">
-        <dc:Bounds x="900" y="580" width="130" height="80"/>
+        <dc:Bounds x="890" y="880" width="130" height="80"/>
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="910" y="610" width="110" height="27"/>
+          <dc:Bounds x="900" y="910" width="110" height="27"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNShape id="Event_SystemEnd_di" bpmnElement="Event_SystemEnd">
-        <dc:Bounds x="1080" y="602" width="36" height="36"/>
+        <dc:Bounds x="1070" y="902" width="36" height="36"/>
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1060" y="638" width="76" height="14"/>
+          <dc:Bounds x="1050" y="938" width="76" height="14"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
 
-      <!-- System Process Edges -->
       <bpmndi:BPMNEdge id="Flow_SystemInit_di" bpmnElement="Flow_SystemInit">
-        <di:waypoint x="186" y="568"/>
-        <di:waypoint x="230" y="570"/>
+        <di:waypoint x="186" y="818"/>
+        <di:waypoint x="220" y="820"/>
       </bpmndi:BPMNEdge>
 
       <bpmndi:BPMNEdge id="Flow_RequestReceived_di" bpmnElement="Flow_RequestReceived">
-        <di:waypoint x="370" y="570"/>
-        <di:waypoint x="420" y="575"/>
+        <di:waypoint x="360" y="820"/>
+        <di:waypoint x="410" y="825"/>
       </bpmndi:BPMNEdge>
 
       <bpmndi:BPMNEdge id="Flow_AuthRequest_di" bpmnElement="Flow_AuthRequest">
-        <di:waypoint x="445" y="550"/>
-        <di:waypoint x="520" y="540"/>
+        <di:waypoint x="435" y="800"/>
+        <di:waypoint x="510" y="800"/>
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="470" y="535" width="25" height="14"/>
+          <dc:Bounds x="450" y="785" width="25" height="14"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
 
-      <bpmndi:BPMNEdge id="Flow_UserRequest_di" bpmnElement="Flow_UserRequest">
-        <di:waypoint x="445" y="575"/>
-        <di:waypoint x="520" y="640"/>
+      <bpmndi:BPMNEdge id="Flow_ContentRequest_di" bpmnElement="Flow_ContentRequest">
+        <di:waypoint x="435" y="825"/>
+        <di:waypoint x="510" y="900"/>
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="460" y="600" width="50" height="14"/>
+          <dc:Bounds x="445" y="850" width="60" height="14"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_QuizRequest_di" bpmnElement="Flow_QuizRequest">
+        <di:waypoint x="435" y="850"/>
+        <di:waypoint x="510" y="1000"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="450" y="920" width="50" height="14"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
 
       <bpmndi:BPMNEdge id="Flow_PubChemRequest_di" bpmnElement="Flow_PubChemRequest">
-        <di:waypoint x="445" y="600"/>
-        <di:waypoint x="520" y="740"/>
+        <di:waypoint x="435" y="850"/>
+        <di:waypoint x="510" y="1100"/>
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="450" y="660" width="60" height="14"/>
+          <dc:Bounds x="445" y="970" width="60" height="14"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
 
       <bpmndi:BPMNEdge id="Flow_AuthProcessed_di" bpmnElement="Flow_AuthProcessed">
-        <di:waypoint x="640" y="540"/>
-        <di:waypoint x="700" y="590"/>
+        <di:waypoint x="630" y="800"/>
+        <di:waypoint x="700" y="890"/>
       </bpmndi:BPMNEdge>
 
-      <bpmndi:BPMNEdge id="Flow_UserProcessed_di" bpmnElement="Flow_UserProcessed">
-        <di:waypoint x="640" y="640"/>
-        <di:waypoint x="700" y="610"/>
+      <bpmndi:BPMNEdge id="Flow_ContentProcessed_di" bpmnElement="Flow_ContentProcessed">
+        <di:waypoint x="630" y="900"/>
+        <di:waypoint x="700" y="900"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_QuizProcessed_di" bpmnElement="Flow_QuizProcessed">
+        <di:waypoint x="630" y="1000"/>
+        <di:waypoint x="700" y="910"/>
       </bpmndi:BPMNEdge>
 
       <bpmndi:BPMNEdge id="Flow_PubChemProcessed_di" bpmnElement="Flow_PubChemProcessed">
-        <di:waypoint x="640" y="740"/>
-        <di:waypoint x="965" y="660"/>
+        <di:waypoint x="640" y="1100"/>
+        <di:waypoint x="955" y="960"/>
       </bpmndi:BPMNEdge>
 
       <bpmndi:BPMNEdge id="Flow_DatabaseDone_di" bpmnElement="Flow_DatabaseDone">
-        <di:waypoint x="840" y="600"/>
-        <di:waypoint x="900" y="620"/>
+        <di:waypoint x="840" y="900"/>
+        <di:waypoint x="890" y="920"/>
       </bpmndi:BPMNEdge>
 
       <bpmndi:BPMNEdge id="Flow_ResponseSent_di" bpmnElement="Flow_ResponseSent">
-        <di:waypoint x="1030" y="620"/>
-        <di:waypoint x="1080" y="620"/>
+        <di:waypoint x="1020" y="920"/>
+        <di:waypoint x="1070" y="920"/>
       </bpmndi:BPMNEdge>
 
     </bpmndi:BPMNPlane>
