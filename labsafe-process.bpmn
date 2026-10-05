@@ -38,7 +38,7 @@
       <bpmn:outgoing>Flow_ReagentsConsulted</bpmn:outgoing>
     </bpmn:task>
 
-    <bpmn:task id="Task_StudentTakeQuiz" name="Resolver questionário">
+    <bpmn:task id="Task_StudentTakeQuiz" name="Fazer o quiz">
       <bpmn:incoming>Flow_ReagentsConsulted</bpmn:incoming>
       <bpmn:outgoing>Flow_StudentQuizDone</bpmn:outgoing>
     </bpmn:task>
@@ -53,7 +53,7 @@
       <bpmn:incoming>Flow_StudentPassed</bpmn:incoming>
     </bpmn:endEvent>
 
-    <bpmn:task id="Task_StudentRetrain" name="Refazer o conteúdo">
+    <bpmn:task id="Task_StudentRetrain" name="Refazer quiz">
       <bpmn:incoming>Flow_StudentFailed</bpmn:incoming>
       <bpmn:outgoing>Flow_RetrainingLoop</bpmn:outgoing>
     </bpmn:task>
