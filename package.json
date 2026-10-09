@@ -22,9 +22,13 @@
     "pg": "^8.23.0"
   },
   "devDependencies": {
+    "@swc/core": "^1.16.13",
+    "@swc/jest": "^0.2.39",
     "@types/bcrypt": "^6.0.0",
+    "@types/jest": "^30.0.0",
     "@types/node": "^22.20.3",
     "@types/pg": "^8.23.1",
+    "jest": "^30.5.2",
     "tsup": "^8.5.1",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2"
