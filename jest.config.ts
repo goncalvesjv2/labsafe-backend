@@ -5,7 +5,16 @@ const config: Config = {
   testEnvironment: "node",
   testMatch: ["**/*.test.ts"],
   transform: {
-    "^.+\\.ts$": "@swc/jest",
+    "^.+\\.ts$": ["@swc/jest", {
+      jsc: {
+        parser: {
+          syntax: "typescript",
+        },
+      },
+      module: {
+        type: "commonjs",
+      },
+    }],
   },
   collectCoverage: false,
   coverageDirectory: "coverage",
