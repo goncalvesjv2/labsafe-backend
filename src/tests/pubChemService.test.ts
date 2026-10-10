@@ -38,5 +38,14 @@ describe("pubChemService", () => {
 
         expect(globalThis.fetch).toHaveBeenCalledTimes(1);
         expect(globalThis.fetch).toHaveBeenCalledWith("https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/Water/property/Title,MolecularFormula,MolecularWeight/JSON");
+    });
+
+    test("deve lançar erro quando a API da falha", async () => {
+        jest.spyOn(globalThis, "fetch").mockResolvedValue({
+            ok: false,
+            json: async () => ({}),
+        } as Response);
+
+        await expect(pubChemService("ajifajfiapwkf")).rejects.toThrow("Composto não encontrado no PubChem");
     })
-})
+});
