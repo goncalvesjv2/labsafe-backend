@@ -20,7 +20,7 @@ git clone https://github.com/goncalvesjv2/labsafe-backend
 
 ### 2. Acessar o projeto
 ```bash
-cd gestao-reagentes-backend
+cd labsafe-backend
 ```
 
 ### 3. Abrir no VS Code
