@@ -47,4 +47,22 @@ describe("Testes de integração - autenticação", () => {
             "Senha123!"
         );
     });
+
+    test("Status 401 não autorizado", async () => {
+        loginServiceMock.mockRejectedValue(
+            new Error("E-mail ou senha inválidos")
+        );
+
+        const response = await app.inject({
+            method: 'POST',
+            url: "/auth/login",
+            payload: {
+                email: "joaovictor@email.com",
+                password: "incorretPassword",
+            }
+        });
+
+        expect(response.statusCode).toBe(401);
+        expect(response.json()).toHaveProperty("message", "E-mail ou senha inválidos");
+    });
 });
