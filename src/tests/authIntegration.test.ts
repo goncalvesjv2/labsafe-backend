@@ -1,27 +1,26 @@
-import {
-    describe,
-    expect,
-    test,
-    jest,
-    beforeAll,
-    afterAll,
-} from "@jest/globals";
-
-const loginServiceMock = jest.fn<(...args: any[]) => Promise<any>>();
-
-jest.mock("../services/authService", () => ({
-    loginService: loginServiceMock,
-}));
-
-import { app } from "../app";
+import { describe, expect, test, jest, beforeAll, afterAll } from "@jest/globals";
 
 describe("Testes de integração - autenticação", () => {
+    const loginServiceMock = jest.fn<(...args: any[]) => Promise<any>>();
+
+    let app: typeof import("../app").app;
+
     beforeAll(async () => {
+        jest.resetModules();
+
+        jest.doMock("../services/authService", () => ({
+            loginService: loginServiceMock,
+        }));
+
+        const appModule = await import("../app");
+        app = appModule.app;
+
         await app.ready();
     });
 
     afterAll(async () => {
         await app.close();
+        jest.dontMock("../services/authService");
     });
 
     test("deve retornar 200 ao realizar login com sucesso", async () => {
