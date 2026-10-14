@@ -1,9 +1,10 @@
 import { afterAll, beforeAll, describe, expect, test } from "@jest/globals";
 import { app } from "../app";
-import { pool } from "../database/db";
+import { prisma } from "../database/prisma";
 import { generateToken } from "../utils/token";
-import { IUser } from "../interfaces/IUser";
 import { UserRole } from "../utils/user";
+import { user_role } from "../generated/prisma/enums";
+import { IToken } from "../interfaces/IToken";
 
 describe("Teste E2E - usuários", () => {
     let userId: number | undefined;
@@ -16,27 +17,22 @@ describe("Teste E2E - usuários", () => {
     afterAll(async () => {
         try {
             if (userId !== undefined) {
-                await pool.query(
-                    "DELETE FROM usuario WHERE id = $1",
-                    [userId]
-                );
+                await prisma.usuario.delete({
+                    where: { id: userId }
+                })
             }
         } finally {
             await app.close();
-            await pool.end();
+            await prisma.$disconnect();
         }
     });
 
     test("deve criar e consultar um usuário pela API", async () => {
-        const admin = {
+        const admin: IToken = {
             id: 1,
-            name: "Administrador de Teste",
-            email: "admin.teste@example.com",
-            senha: "hashTestPassword",
-            password: "hashTestPassword",
-            role: UserRole.ADMIN,
-            ativo: true
-        } as IUser;
+            name: "Administrador Teste",
+            role: user_role.Admin
+        }
 
         const { token } = generateToken(admin);
 
