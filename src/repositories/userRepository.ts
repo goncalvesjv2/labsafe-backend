@@ -1,7 +1,7 @@
 import { ICreateUser } from "../interfaces/IUser";
 import { prisma } from "../database/prisma";
 import { user_role } from "../generated/prisma/enums";
-import { UserRole } from "../utils/user";
+import { UserRole, formatUser } from "../utils/user";
 
 const role = {
     [UserRole.ADMIN]: user_role.Admin,
@@ -10,13 +10,20 @@ const role = {
 };
 
 export async function listUsersRepository() {
-    return prisma.usuario.findMany();
+    const users = await prisma.usuario.findMany();
+    return users.map(formatUser);
 }
 
 export async function listUserByIdRepository(id: number) {
-    return prisma.usuario.findUnique({
+    const user = await prisma.usuario.findUnique({
         where: { id },
     });
+
+    if (!user) {
+        return null;
+    }
+
+    return formatUser(user);
 }
 
 export async function listUserByEmailRepository(email: string) {
@@ -25,8 +32,8 @@ export async function listUserByEmailRepository(email: string) {
     });
 }
 
-export async function createUserRepository(user: ICreateUser, password: string) {    
-    return prisma.usuario.create({
+export async function createUserRepository(user: ICreateUser, password: string) {
+    const newUser = await prisma.usuario.create({
         data: {
             name: user.name,
             email: user.email,
@@ -34,18 +41,22 @@ export async function createUserRepository(user: ICreateUser, password: string) 
             role: role[user.role],
         },
     });
+
+    return formatUser(newUser);
 }
 
 export async function updateUserRepository(id: number, user: ICreateUser, password: string) {
-    return prisma.usuario.update({
+    const updatedUser = await prisma.usuario.update({
         where: { id },
         data: {
             name: user.name,
             email: user.email,
             senha: password || undefined,
-            role: role[user.role] 
+            role: role[user.role]
         },
     });
+
+    return formatUser(updatedUser);
 }
 
 export async function deleteUserRepository(id: number) {
