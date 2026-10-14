@@ -12,9 +12,14 @@ export async function listUsersController(request: FastifyRequest, reply: Fastif
     }
 }
 
-export async function listUserByIdController(request: FastifyRequest<{Params: {id: number}}>, reply: FastifyReply) {
+export async function listUserByIdController(request: FastifyRequest<{Params: {id: string}}>, reply: FastifyReply) {
     try {
-        const { id } = request.params;
+        const id = Number(request.params.id);
+
+        if(!Number.isInteger(id) || id <= 0) {
+            return reply.status(400).send({message: "ID inválido"});
+        }
+
         const user = await listUserByIdService(id);
         return reply.status(200).send(user);
     } catch (error){
