@@ -19,15 +19,7 @@ export async function listUserByIdService(id: number) {
     return user;
 }
 
-export async function createUserService(user: ICreateUser, userId: number) {
-    if (!user.name || !user.email || !user.password || !user.role) {
-        throw new Error("Todos os campos são obrigatórios");
-    }
-    
-    if (user.role !== UserRole.ADMIN && user.role !== UserRole.ALUNO && user.role !== UserRole.PROFESSOR) {
-        throw new Error("Esse role não é válido");
-    }
-    
+export async function createUserService(user: ICreateUser, userId: number) {  
     const isExistUser = await listUserByEmailRepository(user.email);
     
     if (isExistUser) {
