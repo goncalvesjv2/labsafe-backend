@@ -1,5 +1,5 @@
 import { describe, expect, test, jest, beforeEach, afterEach } from "@jest/globals";
-import { pubChemService } from "../services/pubChemService";
+import { pubChemService } from "../../services/pubChemService";
 
 describe("pubChemService", () => {
     beforeEach(() => {

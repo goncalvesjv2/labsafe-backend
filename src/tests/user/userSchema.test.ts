@@ -1,9 +1,8 @@
 import { describe, test, expect } from "@jest/globals";
-import { userSchema } from "../schemas/userSchema";
-import { UserRole } from "../utils/user";
+import { userSchema } from "../../schemas/userSchema";
+import { UserRole } from "../../utils/user";
 
 describe("Validação de usuário com Zod", () => {
-
     const user = {
         name: "João",
         email: "joao@example.com",

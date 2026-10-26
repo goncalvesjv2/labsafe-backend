@@ -1,10 +1,10 @@
 import { afterAll, beforeAll, describe, expect, test } from "@jest/globals";
-import { app } from "../app";
-import { prisma } from "../database/prisma";
-import { generateToken } from "../utils/token";
-import { UserRole } from "../utils/user";
-import { user_role } from "../generated/prisma/enums";
-import { IToken } from "../interfaces/IToken";
+import { app } from "../../app";
+import { prisma } from "../../database/prisma";
+import { generateToken } from "../../utils/token";
+import { UserRole } from "../../utils/user";
+import { user_role } from "../../generated/prisma/enums";
+import { IToken } from "../../interfaces/IToken";
 
 describe("Teste E2E - usuários", () => {
     let userId: number | undefined;

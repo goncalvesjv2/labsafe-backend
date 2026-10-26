@@ -3,7 +3,7 @@ import { describe, expect, test, jest, beforeAll, afterAll } from "@jest/globals
 describe("Testes de integração - autenticação", () => {
     const loginServiceMock = jest.fn<(...args: any[]) => Promise<any>>();
 
-    let app: typeof import("../app").app;
+    let app: typeof import("../../app").app;
 
     beforeAll(async () => {
         jest.resetModules();
@@ -12,7 +12,7 @@ describe("Testes de integração - autenticação", () => {
             loginService: loginServiceMock,
         }));
 
-        const appModule = await import("../app");
+        const appModule = await import("../../app");
         app = appModule.app;
 
         await app.ready();

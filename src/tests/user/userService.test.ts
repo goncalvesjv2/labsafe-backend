@@ -1,5 +1,5 @@
 import { describe, test, expect, jest, beforeEach } from "@jest/globals";
-import { UserRole } from "../utils/user";
+import { UserRole } from "../../utils/user";
 
 describe("createUserService", () => {
     beforeEach(() => {
@@ -24,7 +24,7 @@ describe("createUserService", () => {
             createLogService,
         }));
 
-        const { createUserService } = await import("../services/userService");
+        const { createUserService } = await import("../../services/userService");
 
         const user = {
             name: "João",
@@ -77,7 +77,7 @@ describe("createUserService", () => {
             createLogService,
         }));
 
-        const { createUserService } = await import("../services/userService");
+        const { createUserService } = await import("../../services/userService");
 
         const user = {
             name: "João",

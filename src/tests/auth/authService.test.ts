@@ -35,7 +35,7 @@ describe("loginService", () => {
             createLogService,
         }));
 
-        const { loginService } = await import("../services/authService");
+        const { loginService } = await import("../../services/authService");
 
         const email = "joao.teste@example.com";
         const password = "Senha123!";
@@ -96,7 +96,7 @@ describe("loginService", () => {
             createLogService,
         }));
 
-        const { loginService } = await import("../services/authService");
+        const { loginService } = await import("../../services/authService");
 
         listUserByEmailRepository.mockResolvedValue(null);
 
@@ -132,7 +132,7 @@ describe("loginService", () => {
             createLogService,
         }));
 
-        const { loginService } = await import("../services/authService");
+        const { loginService } = await import("../../services/authService");
 
         const user = {
             id: 1,
@@ -179,7 +179,7 @@ describe("loginService", () => {
             createLogService,
         }));
 
-        const { loginService } = await import("../services/authService");
+        const { loginService } = await import("../../services/authService");
 
         const user = {
             id: 1,

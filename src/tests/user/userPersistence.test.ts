@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, test } from "@jest/globals";
-import { prisma } from "../database/prisma";
-import { user_role } from "../generated/prisma/enums";
+import { prisma } from "../../database/prisma";
+import { user_role } from "../../generated/prisma/enums";
 
 describe("Teste de persistência - usuário", () => {
     const email = `teste.${Date.now()}@example.com`;
