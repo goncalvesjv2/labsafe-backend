@@ -7,3 +7,7 @@ export const userSchema = z.object({
     password: z.string().min(8, "No mínimo 8 caracteres"),
     role: z.enum(UserRole)
 });
+
+export const updateUserSchema = userSchema.partial({ password: true });
+
+export type UpdateUser = z.infer<typeof updateUserSchema>;
