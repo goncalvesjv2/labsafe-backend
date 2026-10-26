@@ -11,7 +11,7 @@ describe("createUserService", () => {
         const listUserByEmailRepository = jest.fn<(...args: any[]) => Promise<any>>();
         const createLogService = jest.fn<(...args: any[]) => Promise<any>>();
 
-        jest.doMock("../repositories/userRepository", () => ({
+        jest.doMock("../../repositories/userRepository", () => ({
             createUserRepository,
             listUserByEmailRepository,
             listUsersRepository: jest.fn(),
@@ -20,7 +20,7 @@ describe("createUserService", () => {
             deleteUserRepository: jest.fn(),
         }));
 
-        jest.doMock("../services/logService", () => ({
+        jest.doMock("../../services/logService", () => ({
             createLogService,
         }));
 
@@ -64,7 +64,7 @@ describe("createUserService", () => {
         const listUserByEmailRepository = jest.fn<(...args: any[]) => Promise<any>>();
         const createLogService = jest.fn<(...args: any[]) => Promise<any>>();
 
-        jest.doMock("../repositories/userRepository", () => ({
+        jest.doMock("../../repositories/userRepository", () => ({
             createUserRepository,
             listUserByEmailRepository,
             listUsersRepository: jest.fn(),
@@ -73,7 +73,7 @@ describe("createUserService", () => {
             deleteUserRepository: jest.fn(),
         }));
 
-        jest.doMock("../services/logService", () => ({
+        jest.doMock("../../services/logService", () => ({
             createLogService,
         }));
 

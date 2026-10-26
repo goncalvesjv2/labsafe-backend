@@ -11,7 +11,7 @@ describe("loginService", () => {
         const generateToken = jest.fn<(...args: any[]) => Promise<any>>();
         const createLogService = jest.fn<(...args: any[]) => Promise<any>>();
         
-        jest.doMock("../repositories/userRepository", () => ({
+        jest.doMock("../../repositories/userRepository", () => ({
             listUserByEmailRepository,
             createUserRepository: jest.fn(),
             listUsersRepository: jest.fn(),
@@ -27,11 +27,11 @@ describe("loginService", () => {
             },
         }));
 
-        jest.doMock("../utils/token", () => ({
+        jest.doMock("../../utils/token", () => ({
             generateToken,
         }));
 
-        jest.doMock("../services/logService", () => ({
+        jest.doMock("../../services/logService", () => ({
             createLogService,
         }));
 
@@ -77,7 +77,7 @@ describe("loginService", () => {
         const generateToken = jest.fn<(...args: any[]) => Promise<any>>();
         const createLogService = jest.fn<(...args: any[]) => Promise<any>>();
         
-        jest.doMock("../repositories/userRepository", () => ({
+        jest.doMock("../../repositories/userRepository", () => ({
             listUserByEmailRepository,
         }));
 
@@ -88,11 +88,11 @@ describe("loginService", () => {
             },
         }));
 
-        jest.doMock("../utils/token", () => ({
+        jest.doMock("../../utils/token", () => ({
             generateToken,
         }));
 
-        jest.doMock("../services/logService", () => ({
+        jest.doMock("../../services/logService", () => ({
             createLogService,
         }));
 
@@ -113,7 +113,7 @@ describe("loginService", () => {
         const generateToken = jest.fn<(...args: any[]) => Promise<any>>();
         const createLogService = jest.fn<(...args: any[]) => Promise<any>>();
         
-        jest.doMock("../repositories/userRepository", () => ({
+        jest.doMock("../../repositories/userRepository", () => ({
             listUserByEmailRepository,
         }));
 
@@ -124,11 +124,11 @@ describe("loginService", () => {
             },
         }));
 
-        jest.doMock("../utils/token", () => ({
+        jest.doMock("../../utils/token", () => ({
             generateToken,
         }));
 
-        jest.doMock("../services/logService", () => ({
+        jest.doMock("../../services/logService", () => ({
             createLogService,
         }));
 
@@ -160,7 +160,7 @@ describe("loginService", () => {
         const generateToken = jest.fn<(...args: any[]) => Promise<any>>();
         const createLogService = jest.fn<(...args: any[]) => Promise<any>>();
 
-        jest.doMock("../repositories/userRepository", () => ({
+        jest.doMock("../../repositories/userRepository", () => ({
             listUserByEmailRepository,
         }));
 
@@ -171,11 +171,11 @@ describe("loginService", () => {
             },
         }));
 
-        jest.doMock("../utils/token", () => ({
+        jest.doMock("../../utils/token", () => ({
             generateToken,
         }));
 
-        jest.doMock("../services/logService", () => ({
+        jest.doMock("../../services/logService", () => ({
             createLogService,
         }));
 

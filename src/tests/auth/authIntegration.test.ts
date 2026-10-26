@@ -8,7 +8,7 @@ describe("Testes de integração - autenticação", () => {
     beforeAll(async () => {
         jest.resetModules();
 
-        jest.doMock("../services/authService", () => ({
+        jest.doMock("../../services/authService", () => ({
             loginService: loginServiceMock,
         }));
 
@@ -19,8 +19,13 @@ describe("Testes de integração - autenticação", () => {
     });
 
     afterAll(async () => {
-        await app.close();
-        jest.dontMock("../services/authService");
+        try {
+            if (app) {
+                await app.close();
+            }
+        } finally {
+            jest.dontMock("../../services/authService");
+        }
     });
 
     test("deve retornar 200 ao realizar login com sucesso", async () => {
