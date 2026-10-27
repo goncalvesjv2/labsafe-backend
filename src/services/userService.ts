@@ -3,6 +3,7 @@ import { createUserRepository, deleteUserRepository, listUserByEmailRepository, 
 import { UserRole } from "../utils/user";
 import bcrypt from "bcrypt";
 import { createLogService } from "./logService";
+import type { UpdateUser } from "../schemas/userSchema";
 
 export async function listUsersService() {
     const users = await listUsersRepository();
@@ -39,7 +40,7 @@ export async function createUserService(user: ICreateUser, userId: number) {
     return createUser;
 }
 
-export async function updateUserService(id: number, user: ICreateUser, userId: number) {
+export async function updateUserService(id: number, user: UpdateUser, userId: number) {
     if (!user.name || !user.email || !user.role) {
         throw new Error("Nome, e-mail e cargo são obrigatórios");
     }

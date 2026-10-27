@@ -5,7 +5,7 @@ describe("loginService", () => {
         jest.resetModules();
     });
 
-    test("deve autenticar um usuário com sucesso", async () => {
+    test("deve autenticar removendo os espaços das extremidades da senha", async () => {
         const listUserByEmailRepository = jest.fn<(...args: any[]) => Promise<any>>();
         const comparePassword = jest.fn<(...args: any[]) => Promise<any>>();
         const generateToken = jest.fn<(...args: any[]) => Promise<any>>();
@@ -38,7 +38,7 @@ describe("loginService", () => {
         const { loginService } = await import("../../services/authService");
 
         const email = "joao.teste@example.com";
-        const password = "Senha123!";
+        const password = "  Senha123!  ";
 
         const user = {
             id: 1,
@@ -62,7 +62,7 @@ describe("loginService", () => {
 
         expect(result).toEqual(token);
         expect(listUserByEmailRepository).toHaveBeenCalledWith(email);
-        expect(comparePassword).toHaveBeenCalledWith(password, user.senha);
+        expect(comparePassword).toHaveBeenCalledWith("Senha123!", user.senha);
         expect(generateToken).toHaveBeenCalledWith(user);
         expect(createLogService).toHaveBeenCalledWith({
             userId: user.id,

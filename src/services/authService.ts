@@ -10,7 +10,7 @@ export async function loginService(email: string, password: string) {
         throw new Error("E-mail ou senha inválidos");
     }
 
-    const passwordValidate = await bcrypt.compare(password, isExistUser.senha);
+    const passwordValidate = await bcrypt.compare(password.trim(), isExistUser.senha);
 
     if (passwordValidate) {
         const token = generateToken(isExistUser);

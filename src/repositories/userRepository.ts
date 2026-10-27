@@ -1,7 +1,9 @@
 import { ICreateUser } from "../interfaces/IUser";
 import { prisma } from "../database/prisma";
+import { Prisma } from "../generated/prisma/client";
 import { user_role } from "../generated/prisma/enums";
 import { UserRole, formatUser } from "../utils/user";
+import type { UpdateUser } from "../schemas/userSchema";
 
 const role = {
     [UserRole.ADMIN]: user_role.Admin,
@@ -45,18 +47,26 @@ export async function createUserRepository(user: ICreateUser, password: string) 
     return formatUser(newUser);
 }
 
-export async function updateUserRepository(id: number, user: ICreateUser, password: string) {
-    const updatedUser = await prisma.usuario.update({
-        where: { id },
-        data: {
-            name: user.name,
-            email: user.email,
-            senha: password || undefined,
-            role: role[user.role]
-        },
-    });
+export async function updateUserRepository(id: number, user: UpdateUser, password: string) {
+    try {
+        const updatedUser = await prisma.usuario.update({
+            where: { id },
+            data: {
+                name: user.name,
+                email: user.email,
+                senha: password || undefined,
+                role: role[user.role]
+            },
+        });
 
-    return formatUser(updatedUser);
+        return formatUser(updatedUser);
+    } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+            return null;
+        }
+
+        throw error;
+    }
 }
 
 export async function deleteUserRepository(id: number) {

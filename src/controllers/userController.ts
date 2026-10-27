@@ -2,7 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { createUserService, deleteUserService, listUserByIdService, listUsersService, updateUserService } from "../services/userService";
 import { ICreateUser } from "../interfaces/IUser";
 import { IPayload } from "../interfaces/IPayload";
-import { userSchema } from "../schemas/userSchema";
+import { userSchema, updateUserSchema } from "../schemas/userSchema";
 
 export async function listUsersController(request: FastifyRequest, reply: FastifyReply) {
     try {
@@ -47,12 +47,25 @@ export async function createUserController(request: FastifyRequest, reply: Fasti
     }
 }
 
-export async function updateUserController(request: FastifyRequest<{Params: {id: number}}>, reply: FastifyReply) {
+export async function updateUserController(request: FastifyRequest<{Params: {id: string}}>, reply: FastifyReply) {
     try {
-        const { id } = request.params;
-        const user: ICreateUser = request.body as ICreateUser;
+        const id = Number(request.params.id);
+
+        if (!Number.isInteger(id) || id <= 0) {
+            return reply.status(400).send({message: "ID inválido"});
+        }
+
+        const result = updateUserSchema.safeParse(request.body);
+
+        if (!result.success) {
+            return reply.status(400).send({
+                message: "Dados inválidos",
+                errors: result.error.issues
+            });
+        }
+
         const logged = request.user as IPayload;
-        const updateUser = await updateUserService(id, user, logged.sub);
+        const updateUser = await updateUserService(id, result.data, logged.sub);
         return reply.status(200).send(updateUser);
     } catch (error) {
         return reply.status(400).send(error);
