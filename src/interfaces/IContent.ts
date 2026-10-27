@@ -1,11 +1,9 @@
-export interface IContent {
-    id: number;
-    teacherId: number;
+export interface ICreateContent {
     title: string;
     description: string;
 }
 
-export interface ICreateContent {
-    title: string;
-    description: string;
+export interface IContent extends ICreateContent {
+    id: number;
+    teacherId: number;
 }
