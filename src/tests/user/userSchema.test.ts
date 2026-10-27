@@ -58,8 +58,8 @@ describe("Validação de cadastro de usuário", () => {
 
 describe("Validação de atualização de usuário", () => {
     const user = {
-        name: "João",
-        email: "joao@example.com",
+        name: "Ana",
+        email: "ana@example.com",
         role: UserRole.ALUNO
     };
 
@@ -72,11 +72,11 @@ describe("Validação de atualização de usuário", () => {
     test("deve remover espaços do nome e da nova senha", () => {
         const result = updateUserSchema.parse({
             ...user,
-            name: "  João  ",
+            name: "  Ana  ",
             password: "  NovaSenha123!  "
         });
 
-        expect(result.name).toBe("João");
+        expect(result.name).toBe("Ana");
         expect(result.password).toBe("NovaSenha123!");
     });
 

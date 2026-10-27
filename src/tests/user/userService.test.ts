@@ -97,8 +97,8 @@ describe("createUserService", () => {
 
 describe("updateUserService", () => {
     const user = {
-        name: "João",
-        email: "joao@example.com",
+        name: "Ana",
+        email: "ana@example.com",
         role: UserRole.PROFESSOR
     };
     const savedUser = { id: 7, ...user, ativo: true };

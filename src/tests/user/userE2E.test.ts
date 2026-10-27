@@ -71,30 +71,33 @@ describe("API de usuários", () => {
         expect(await bcrypt.compare("  SenhaTeste123!  ", savedUser.senha)).toBe(false);
     });
 
-    test("deve atualizar nome e cargo sem trocar a senha", async () => {
+    test("deve atualizar nome, e-mail e cargo sem trocar a senha", async () => {
         const beforeUpdate = await prisma.usuario.findUniqueOrThrow({ where: { id: userId } });
+        const updatedEmail = "ana." + Date.now() + "@example.com";
 
         const response = await app.inject({
             method: "PATCH",
             url: "/api/users/" + userId,
             headers: { authorization: "Bearer " + token },
-            payload: { name: "  Usuário Atualizado  ", email, role: UserRole.PROFESSOR }
+            payload: { name: "  Ana  ", email: updatedEmail, role: UserRole.PROFESSOR }
         });
 
         expect(response.statusCode).toBe(200);
         const savedUser = await prisma.usuario.findUniqueOrThrow({ where: { id: userId } });
-        expect(savedUser.name).toBe("Usuário Atualizado");
+        expect(savedUser.name).toBe("Ana");
+        expect(savedUser.email).toBe(updatedEmail);
         expect(savedUser.role).toBe(user_role.Professor_a_);
         expect(savedUser.senha).toBe(beforeUpdate.senha);
     });
 
     test("deve trocar a senha e permitir login", async () => {
+        const updatedEmail = "ana." + Date.now() + "@example.com";
         const response = await app.inject({
             method: "PATCH",
             url: "/api/users/" + userId,
             headers: { authorization: "Bearer " + token },
             payload: {
-                name: "Usuário E2E", email, role: UserRole.ALUNO,
+                name: "Ana", email: updatedEmail, role: UserRole.ALUNO,
                 password: "  NovaSenhaTeste123!  "
             }
         });
@@ -103,6 +106,8 @@ describe("API de usuários", () => {
         expect(response.json()).not.toHaveProperty("senha");
         expect(response.json()).not.toHaveProperty("password");
         const savedUser = await prisma.usuario.findUniqueOrThrow({ where: { id: userId } });
+        expect(savedUser.name).toBe("Ana");
+        expect(savedUser.email).toBe(updatedEmail);
         expect(savedUser.senha).not.toBe("NovaSenhaTeste123!");
         expect(await bcrypt.compare("NovaSenhaTeste123!", savedUser.senha)).toBe(true);
         expect(await bcrypt.compare("  NovaSenhaTeste123!  ", savedUser.senha)).toBe(false);
@@ -111,7 +116,7 @@ describe("API de usuários", () => {
         const loginResponse = await app.inject({
             method: "POST",
             url: "/auth/login",
-            payload: { email, password: "  NovaSenhaTeste123!  " }
+            payload: { email: updatedEmail, password: "  NovaSenhaTeste123!  " }
         });
         expect(loginResponse.statusCode).toBe(200);
         expect(loginResponse.json()).toHaveProperty("token");

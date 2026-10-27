@@ -44,8 +44,8 @@ describe("Teste de persistência - usuário", () => {
 
 describe("updateUserRepository", () => {
     const user = {
-        name: "João",
-        email: "joao@example.com",
+        name: "Ana",
+        email: "ana@example.com",
         role: UserRole.PROFESSOR
     };
     const storedUser = {
