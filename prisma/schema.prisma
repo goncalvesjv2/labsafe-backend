@@ -17,13 +17,22 @@ model logs {
 }
 
 model usuario {
-  id    Int       @id @default(autoincrement())
-  name  String    @db.VarChar(100)
-  email String    @unique @db.VarChar(100)
-  senha String    @db.VarChar(255)
-  role  user_role
-  ativo Boolean   @default(true)
-  logs  logs[]
+  id       Int        @id @default(autoincrement())
+  name     String     @db.VarChar(100)
+  email    String     @unique @db.VarChar(100)
+  senha    String     @db.VarChar(255)
+  role     user_role
+  ativo    Boolean    @default(true)
+  conteudo conteudo[]
+  logs     logs[]
+}
+
+model conteudo {
+  id           Int     @id @default(autoincrement())
+  professor_id Int
+  title        String  @db.VarChar(150)
+  description  String
+  usuario      usuario @relation(fields: [professor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 enum user_role {
