@@ -3,7 +3,7 @@ import { UserRole } from "../utils/user";
 import { IPayload } from "../interfaces/IPayload";
 import { createLogService } from "../services/logService";
 
-export async function authorizationMiddleware(request: FastifyRequest, reply: FastifyReply) {
+export async function adminAuthorizationMiddleware(request: FastifyRequest, reply: FastifyReply) {
     const user = request.user as IPayload;
    
     if (user.role !== UserRole.ADMIN) {
@@ -13,7 +13,6 @@ export async function authorizationMiddleware(request: FastifyRequest, reply: Fa
             description: "Usuário tentou acessar sem permissão"
         })
         
-        reply.status(403).send({message: "Acesso não autorizado"})
-        return;
+        return reply.status(403).send({message: "Acesso não autorizado"})
     }
 }

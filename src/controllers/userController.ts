@@ -71,9 +71,13 @@ export async function updateUserController(request: FastifyRequest<{Params: {id:
     }
 }
 
-export async function deleteUserController(request: FastifyRequest<{Params: {id: number}}>, reply: FastifyReply) {
+export async function deleteUserController(request: FastifyRequest<{Params: {id: string}}>, reply: FastifyReply) {
     try {
-        const { id } = request.params;
+        const id = Number(request.params.id);
+
+        if (!Number.isInteger(id) || id <= 0) {
+            return reply.status(400).send({message: "ID inválido"});
+        }
         await deleteUserService(id);
         return reply.status(204).send();
     } catch (error) {
