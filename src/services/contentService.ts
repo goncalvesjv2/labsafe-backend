@@ -77,10 +77,7 @@ export async function updateContentService(id: number, content: Partial<ICreateC
     return updateContent;
 }
 
-export async function deleteContentService(
-    id: number,
-    teacherId: number
-) {
+export async function deleteContentService(id: number, teacherId: number) {
     const teacher = await listUserByIdRepository(teacherId);
 
     if (!teacher) {

@@ -1,6 +1,5 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { createUserService, deleteUserService, listUserByIdService, listUsersService, updateUserService } from "../services/userService";
-import { ICreateUser } from "../interfaces/IUser";
 import { IPayload } from "../interfaces/IPayload";
 import { userSchema, updateUserSchema } from "../schemas/userSchema";
 
