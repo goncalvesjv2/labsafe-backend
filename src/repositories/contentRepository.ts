@@ -16,16 +16,12 @@ export async function listContentByIdRepository(id: number) {
         where: { id },
     });
 
-    if (!content) {
-        return null;
-    }
-
-    return {
+    return content ? {
         id: content.id,
         teacherId: content.professor_id,
         title: content.title,
         description: content.description
-    };
+    } : null;
 }
 
 export async function createContentRepository(content: ICreateContent, teacherId: number) {

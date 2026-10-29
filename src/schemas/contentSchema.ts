@@ -6,7 +6,7 @@ export const contentSchema = z.object({
 });
 
 export const updateSchema = contentSchema.partial().refine((content) => {
-    content.title !== undefined || content.description !== undefined, {
-        message: "Informe ao menos um campo para atualizar"
-    }
+    return content.title !== undefined || content.description !== undefined;
+}, {
+    message: "Informe ao menos um campo para atualizar"
 });

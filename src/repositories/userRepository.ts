@@ -21,11 +21,7 @@ export async function listUserByIdRepository(id: number) {
         where: { id },
     });
 
-    if (!user) {
-        return null;
-    }
-
-    return formatUser(user);
+    return user ? formatUser(user) : null;
 }
 
 export async function listUserByEmailRepository(email: string) {
