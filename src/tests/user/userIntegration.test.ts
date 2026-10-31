@@ -18,6 +18,7 @@ describe("Teste de integração de usuários", () => {
     const deleteEmail = `exclusao.${randomUUID()}@example.com`;
     const duplicateEmail = `duplicado.${randomUUID()}@example.com`;
     const invalidEmail = `invalido.${randomUUID()}`;
+    const missingEmail = `inexistente.${randomUUID()}@example.com`;
     const password = "SenhaTeste123!";
 
     beforeAll(async () => {
@@ -45,7 +46,7 @@ describe("Teste de integração de usuários", () => {
 
     afterAll(async () => {
         try {
-            const emails = [adminEmail, email, listEmail, idEmail, updateEmail, deleteEmail, duplicateEmail, invalidEmail];
+            const emails = [adminEmail, email, listEmail, idEmail, updateEmail, deleteEmail, duplicateEmail, invalidEmail, missingEmail];
             await prisma.logs.deleteMany({ where: { usuario: { email: { in: emails } } } });
             await prisma.usuario.deleteMany({ where: { email: { in: emails } } });
         } finally {
@@ -246,5 +247,31 @@ describe("Teste de integração de usuários", () => {
 
         const total = await prisma.usuario.count({ where: { email: invalidEmail } });
         expect(total).toBe(0);
+    }, 30000);
+
+    test("deve retornar erro ao consultar um usuário inexistente", async () => {
+        const user = { name: "Aluno Temporário", email: missingEmail, password, role: UserRole.ALUNO };
+        const createResponse = await fetch(`${baseUrl}/api/users`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(user)
+        });
+        expect(createResponse.status).toBe(201);
+        const createdUser = await createResponse.json();
+        const deleteResponse = await fetch(`${baseUrl}/api/users/${createdUser.id}`, {
+            method: "DELETE",
+            headers: {Authorization: `Bearer ${token}`}
+        });
+        expect(deleteResponse.status).toBe(204);
+        const response = await fetch(`${baseUrl}/api/users/${createdUser.id}`, {
+            method: "GET",
+            headers: {Authorization: `Bearer ${token}`}
+        });
+        expect(response.status).toBe(404);
+        const body = await response.json();
+        expect(body.message).toBe("Usuário não encontrado");
     }, 30000);
 });
