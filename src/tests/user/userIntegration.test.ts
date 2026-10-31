@@ -12,6 +12,7 @@ describe("Teste de integração de usuários", () => {
     let token: string;
     const adminEmail = `admin.${randomUUID()}@example.com`;
     const email = `aluno.${randomUUID()}@example.com`;
+    const listEmail = `listagem.${randomUUID()}@example.com`;
     const password = "SenhaTeste123!";
 
     beforeAll(async () => {
@@ -39,7 +40,7 @@ describe("Teste de integração de usuários", () => {
 
     afterAll(async () => {
         try {
-            const emails = [adminEmail, email];
+            const emails = [adminEmail, email, listEmail];
             await prisma.logs.deleteMany({ where: { usuario: { email: { in: emails } } } });
             await prisma.usuario.deleteMany({ where: { email: { in: emails } } });
         } finally {
@@ -68,5 +69,33 @@ describe("Teste de integração de usuários", () => {
         expect(savedUser).toMatchObject({ id: body.id, name: user.name, email, role: user_role.Aluno_a_ });
         expect(savedUser.senha).not.toBe(password);
         expect(await bcrypt.compare(password, savedUser.senha)).toBe(true);
+    }, 30000);
+
+    test("deve listar usuários e encontrar o usuário cadastrado", async () => {
+        const user = { name: "Aluno Listagem", email: listEmail, password, role: UserRole.ALUNO };
+
+        const createResponse = await fetch(`${baseUrl}/api/users`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(user)
+        });
+        expect(createResponse.status).toBe(201);
+        const createdUser = await createResponse.json();
+
+        const response = await fetch(`${baseUrl}/api/users`, {
+            method: "GET",
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        expect(response.status).toBe(200);
+        const body = await response.json();
+        expect(body).toContainEqual(expect.objectContaining({
+            id: createdUser.id,
+            name: user.name,
+            email: listEmail,
+            role: user.role
+        }));
     }, 30000);
 });
