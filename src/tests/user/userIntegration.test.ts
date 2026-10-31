@@ -14,6 +14,7 @@ describe("Teste de integração de usuários", () => {
     const email = `aluno.${randomUUID()}@example.com`;
     const listEmail = `listagem.${randomUUID()}@example.com`;
     const idEmail = `consulta.${randomUUID()}@example.com`;
+    const updateEmail = `atualizacao.${randomUUID()}@example.com`;
     const password = "SenhaTeste123!";
 
     beforeAll(async () => {
@@ -41,7 +42,7 @@ describe("Teste de integração de usuários", () => {
 
     afterAll(async () => {
         try {
-            const emails = [adminEmail, email, listEmail, idEmail];
+            const emails = [adminEmail, email, listEmail, idEmail, updateEmail];
             await prisma.logs.deleteMany({ where: { usuario: { email: { in: emails } } } });
             await prisma.usuario.deleteMany({ where: { email: { in: emails } } });
         } finally {
@@ -126,5 +127,43 @@ describe("Teste de integração de usuários", () => {
         });
         expect(body).not.toHaveProperty("senha");
         expect(body).not.toHaveProperty("password");
+    }, 30000);
+
+    test("deve atualizar um usuário e salvar a alteração", async () => {
+        const user = { name: "Aluno Antes", email: updateEmail, password, role: UserRole.ALUNO };
+
+        const createResponse = await fetch(`${baseUrl}/api/users`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(user)
+        });
+        expect(createResponse.status).toBe(201);
+        const createdUser = await createResponse.json();
+
+        const updatedUser = { name: "Aluno Atualizado", email: updateEmail, role: UserRole.ALUNO };
+        const response = await fetch(`${baseUrl}/api/users/${createdUser.id}`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(updatedUser)
+        });
+        expect(response.status).toBe(200);
+        const body = await response.json();
+        expect(body).toMatchObject({
+            id: createdUser.id,
+            name: updatedUser.name,
+            email: updateEmail,
+            role: updatedUser.role
+        });
+        expect(body).not.toHaveProperty("senha");
+        expect(body).not.toHaveProperty("password");
+
+        const savedUser = await prisma.usuario.findUniqueOrThrow({ where: { id: createdUser.id } });
+        expect(savedUser.name).toBe(updatedUser.name);
     }, 30000);
 });
