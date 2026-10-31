@@ -16,6 +16,7 @@ describe("Teste de integração de usuários", () => {
     const idEmail = `consulta.${randomUUID()}@example.com`;
     const updateEmail = `atualizacao.${randomUUID()}@example.com`;
     const deleteEmail = `exclusao.${randomUUID()}@example.com`;
+    const duplicateEmail = `duplicado.${randomUUID()}@example.com`;
     const password = "SenhaTeste123!";
 
     beforeAll(async () => {
@@ -43,7 +44,7 @@ describe("Teste de integração de usuários", () => {
 
     afterAll(async () => {
         try {
-            const emails = [adminEmail, email, listEmail, idEmail, updateEmail, deleteEmail];
+            const emails = [adminEmail, email, listEmail, idEmail, updateEmail, deleteEmail, duplicateEmail];
             await prisma.logs.deleteMany({ where: { usuario: { email: { in: emails } } } });
             await prisma.usuario.deleteMany({ where: { email: { in: emails } } });
         } finally {
@@ -191,5 +192,35 @@ describe("Teste de integração de usuários", () => {
 
         const deletedUser = await prisma.usuario.findUnique({ where: { id: createdUser.id } });
         expect(deletedUser).toBeNull();
+    }, 30000);
+
+    test("deve rejeitar cadastro com e-mail já utilizado", async () => {
+        const user = { name: "Aluno Original", email: duplicateEmail, password, role: UserRole.ALUNO };
+        const createResponse = await fetch(`${baseUrl}/api/users`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(user)
+        });
+        expect(createResponse.status).toBe(201);
+        const createdUser = await createResponse.json();
+        const duplicateUser = { name: "Outro Aluno", email: duplicateEmail, password, role: UserRole.ALUNO };
+        const response = await fetch(`${baseUrl}/api/users`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(duplicateUser)
+        });
+        expect(response.status).toBe(400);
+        const body = await response.json();
+        expect(body.message).toBe("Usuário já possui cadastro");
+        const total = await prisma.usuario.count({ where: { email: duplicateEmail } });
+        expect(total).toBe(1);
+        const savedUser = await prisma.usuario.findUniqueOrThrow({ where: { email: duplicateEmail } });
+        expect(savedUser).toMatchObject({ id: createdUser.id, name: user.name });
     }, 30000);
 });
