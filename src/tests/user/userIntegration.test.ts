@@ -17,6 +17,7 @@ describe("Teste de integração de usuários", () => {
     const updateEmail = `atualizacao.${randomUUID()}@example.com`;
     const deleteEmail = `exclusao.${randomUUID()}@example.com`;
     const duplicateEmail = `duplicado.${randomUUID()}@example.com`;
+    const invalidEmail = `invalido.${randomUUID()}`;
     const password = "SenhaTeste123!";
 
     beforeAll(async () => {
@@ -44,7 +45,7 @@ describe("Teste de integração de usuários", () => {
 
     afterAll(async () => {
         try {
-            const emails = [adminEmail, email, listEmail, idEmail, updateEmail, deleteEmail, duplicateEmail];
+            const emails = [adminEmail, email, listEmail, idEmail, updateEmail, deleteEmail, duplicateEmail, invalidEmail];
             await prisma.logs.deleteMany({ where: { usuario: { email: { in: emails } } } });
             await prisma.usuario.deleteMany({ where: { email: { in: emails } } });
         } finally {
@@ -222,5 +223,28 @@ describe("Teste de integração de usuários", () => {
         expect(total).toBe(1);
         const savedUser = await prisma.usuario.findUniqueOrThrow({ where: { email: duplicateEmail } });
         expect(savedUser).toMatchObject({ id: createdUser.id, name: user.name });
+    }, 30000);
+
+    test("deve rejeitar cadastro com e-mail inválido", async () => {
+        const user = { name: "Aluno Inválido", email: invalidEmail, password, role: UserRole.ALUNO };
+
+        const response = await fetch(`${baseUrl}/api/users`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(user)
+        });
+        expect(response.status).toBe(400);
+        const body = await response.json();
+        expect(body.message).toBe("Dados inválidos");
+        expect(body.errors).toContainEqual(expect.objectContaining({
+            path: ["email"],
+            message: "Informe um e-mail válido"
+        }));
+
+        const total = await prisma.usuario.count({ where: { email: invalidEmail } });
+        expect(total).toBe(0);
     }, 30000);
 });
