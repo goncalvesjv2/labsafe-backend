@@ -15,6 +15,7 @@ describe("Teste de integração de usuários", () => {
     const listEmail = `listagem.${randomUUID()}@example.com`;
     const idEmail = `consulta.${randomUUID()}@example.com`;
     const updateEmail = `atualizacao.${randomUUID()}@example.com`;
+    const deleteEmail = `exclusao.${randomUUID()}@example.com`;
     const password = "SenhaTeste123!";
 
     beforeAll(async () => {
@@ -42,7 +43,7 @@ describe("Teste de integração de usuários", () => {
 
     afterAll(async () => {
         try {
-            const emails = [adminEmail, email, listEmail, idEmail, updateEmail];
+            const emails = [adminEmail, email, listEmail, idEmail, updateEmail, deleteEmail];
             await prisma.logs.deleteMany({ where: { usuario: { email: { in: emails } } } });
             await prisma.usuario.deleteMany({ where: { email: { in: emails } } });
         } finally {
@@ -165,5 +166,30 @@ describe("Teste de integração de usuários", () => {
 
         const savedUser = await prisma.usuario.findUniqueOrThrow({ where: { id: createdUser.id } });
         expect(savedUser.name).toBe(updatedUser.name);
+    }, 30000);
+
+    test("deve excluir um usuário", async () => {
+        const user = { name: "Aluno Exclusão", email: deleteEmail, password, role: UserRole.ALUNO };
+
+        const createResponse = await fetch(`${baseUrl}/api/users`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(user)
+        });
+        expect(createResponse.status).toBe(201);
+        const createdUser = await createResponse.json();
+
+        const response = await fetch(`${baseUrl}/api/users/${createdUser.id}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        expect(response.status).toBe(204);
+        expect(await response.text()).toBe("");
+
+        const deletedUser = await prisma.usuario.findUnique({ where: { id: createdUser.id } });
+        expect(deletedUser).toBeNull();
     }, 30000);
 });
