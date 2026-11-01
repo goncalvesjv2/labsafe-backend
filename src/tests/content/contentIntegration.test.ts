@@ -5,6 +5,7 @@ import bcrypt from "bcrypt";
 import { app } from "../../app";
 import { prisma } from "../../database/prisma";
 import { user_role } from "../../generated/prisma/enums";
+import { UserRole } from "../../utils/user";
 
 describe("Teste de integração de conteúdos", () => {
     let baseUrl: string;
@@ -12,6 +13,8 @@ describe("Teste de integração de conteúdos", () => {
     let teacherId: number;
     const teacherEmail = `professor.${randomUUID()}@example.com`;
     const studentEmail = `aluno.conteudo.${randomUUID()}@example.com`;
+    const adminEmail = `admin.conteudo.${randomUUID()}@example.com`;
+    const newTeacherEmail = `professor.fluxo.${randomUUID()}@example.com`;
     const password = "SenhaTeste123!";
 
     beforeAll(async () => {
@@ -39,7 +42,7 @@ describe("Teste de integração de conteúdos", () => {
 
     afterAll(async () => {
         try {
-            const emails = [teacherEmail, studentEmail];
+            const emails = [teacherEmail, studentEmail, adminEmail, newTeacherEmail];
             await prisma.conteudo.deleteMany({ where: { usuario: { email: { in: emails } } } });
             await prisma.logs.deleteMany({ where: { usuario: { email: { in: emails } } } });
             await prisma.usuario.deleteMany({ where: { email: { in: emails } } });
@@ -301,5 +304,84 @@ describe("Teste de integração de conteúdos", () => {
         expect(body.message).toBe("Somente professores podem executar esta ação");
         const total = await prisma.conteudo.count({ where: { title: content.title } });
         expect(total).toBe(0);
+    }, 30000);
+
+    test("deve cadastrar professor, fazer login, criar conteúdo e consultar o resultado", async () => {
+        await prisma.usuario.create({
+            data: {
+                name: "Administrador do Fluxo",
+                email: adminEmail,
+                senha: await bcrypt.hash(password, 10),
+                role: user_role.Admin
+            }
+        });
+
+        const adminLogin = await fetch(`${baseUrl}/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: adminEmail, password })
+        });
+        expect(adminLogin.status).toBe(200);
+        const adminLoginBody = await adminLogin.json();
+        expect(adminLoginBody.token).toEqual(expect.any(String));
+        const adminToken = adminLoginBody.token;
+        const teacher = { name: "Professor", email: newTeacherEmail, password, role: UserRole.PROFESSOR };
+        const teacherResponse = await fetch(`${baseUrl}/api/users`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${adminToken}`
+            },
+            body: JSON.stringify(teacher)
+        });
+        expect(teacherResponse.status).toBe(201);
+        const createdTeacher = await teacherResponse.json();
+        expect(createdTeacher).toMatchObject({
+            id: expect.any(Number),
+            name: teacher.name,
+            email: newTeacherEmail,
+            role: UserRole.PROFESSOR
+        });
+        const teacherLogin = await fetch(`${baseUrl}/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: newTeacherEmail, password })
+        });
+        expect(teacherLogin.status).toBe(200);
+        const teacherLoginBody = await teacherLogin.json();
+        expect(teacherLoginBody.token).toEqual(expect.any(String));
+        const teacherToken = teacherLoginBody.token;
+        const content = {
+            title: "Boas práticas no laboratório",
+            description: "Siga as orientações do professor durante as atividades."
+        };
+        const contentResponse = await fetch(`${baseUrl}/api/contents`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${teacherToken}`
+            },
+            body: JSON.stringify(content)
+        });
+        expect(contentResponse.status).toBe(201);
+        const createdContent = await contentResponse.json();
+        expect(createdContent).toMatchObject({
+            id: expect.any(Number),
+            teacherId: createdTeacher.id,
+            title: content.title,
+            description: content.description
+        });
+        const response = await fetch(`${baseUrl}/api/contents/${createdContent.id}`, {
+            method: "GET",
+            headers: { Authorization: `Bearer ${teacherToken}` }
+        });
+        expect(response.status).toBe(200);
+        const body = await response.json();
+        expect(body).toMatchObject({
+            id: createdContent.id,
+            teacherId: createdTeacher.id,
+            title: content.title,
+            description: content.description
+        });
     }, 30000);
 });
