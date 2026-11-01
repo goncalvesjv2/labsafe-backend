@@ -242,4 +242,24 @@ describe("Teste de integração de conteúdos", () => {
         const totalAfter = await prisma.conteudo.count({ where: { professor_id: teacherId } });
         expect(totalAfter).toBe(totalBefore);
     }, 30000);
+
+    test("deve rejeitar cadastro de conteúdo sem token", async () => {
+        const content = {
+            title: `Conteúdo sem token ${randomUUID()}`,
+            description: "Tentativa de cadastro sem autenticação."
+        };
+
+        const response = await fetch(`${baseUrl}/api/contents`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(content)
+        });
+        expect(response.status).toBe(401);
+        const body = await response.json();
+        expect(body.code).toBe("FST_JWT_NO_AUTHORIZATION_IN_HEADER");
+        expect(body.message).toBe("No Authorization was found in request.headers");
+
+        const total = await prisma.conteudo.count({ where: { title: content.title } });
+        expect(total).toBe(0);
+    }, 30000);
 });
