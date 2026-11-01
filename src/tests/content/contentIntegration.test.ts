@@ -1,0 +1,81 @@
+import "dotenv/config";
+import { afterAll, beforeAll, describe, expect, test } from "@jest/globals";
+import { randomUUID } from "node:crypto";
+import bcrypt from "bcrypt";
+import { app } from "../../app";
+import { prisma } from "../../database/prisma";
+import { user_role } from "../../generated/prisma/enums";
+
+describe("Teste de integração de conteúdos", () => {
+    let baseUrl: string;
+    let token: string;
+    let teacherId: number;
+    const teacherEmail = `professor.${randomUUID()}@example.com`;
+    const password = "SenhaTeste123!";
+
+    beforeAll(async () => {
+        baseUrl = await app.listen({ port: 0, host: "127.0.0.1" });
+        const teacher = await prisma.usuario.create({
+            data: {
+                name: "Professor Teste",
+                email: teacherEmail,
+                senha: await bcrypt.hash(password, 10),
+                role: user_role.Professor_a_
+            }
+        });
+        teacherId = teacher.id;
+
+        const login = await fetch(`${baseUrl}/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: teacherEmail, password })
+        });
+        expect(login.status).toBe(200);
+        const loginBody = await login.json();
+        expect(loginBody.token).toEqual(expect.any(String));
+        token = loginBody.token;
+    }, 30000);
+
+    afterAll(async () => {
+        try {
+            await prisma.conteudo.deleteMany({ where: { usuario: { email: teacherEmail } } });
+            await prisma.logs.deleteMany({ where: { usuario: { email: teacherEmail } } });
+            await prisma.usuario.deleteMany({ where: { email: teacherEmail } });
+        } finally {
+            await Promise.all([app.close(), prisma.$disconnect()]);
+        }
+    }, 30000);
+
+    test("deve permitir que o professor cadastre um conteúdo", async () => {
+        const content = {
+            title: "Segurança no laboratório",
+            description: "Use os equipamentos de proteção durante as atividades."
+        };
+
+        const response = await fetch(`${baseUrl}/api/contents`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(content)
+        });
+        expect(response.status).toBe(201);
+        expect(response.headers.get("content-type")).toContain("application/json");
+        const body = await response.json();
+        expect(body).toMatchObject({
+            id: expect.any(Number),
+            teacherId,
+            title: content.title,
+            description: content.description
+        });
+
+        const savedContent = await prisma.conteudo.findUniqueOrThrow({ where: { id: body.id } });
+        expect(savedContent).toMatchObject({
+            id: body.id,
+            professor_id: teacherId,
+            title: content.title,
+            description: content.description
+        });
+    }, 30000);
+});
