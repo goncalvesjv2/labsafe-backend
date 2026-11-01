@@ -11,6 +11,7 @@ describe("Teste de integração de conteúdos", () => {
     let token: string;
     let teacherId: number;
     const teacherEmail = `professor.${randomUUID()}@example.com`;
+    const studentEmail = `aluno.conteudo.${randomUUID()}@example.com`;
     const password = "SenhaTeste123!";
 
     beforeAll(async () => {
@@ -38,9 +39,10 @@ describe("Teste de integração de conteúdos", () => {
 
     afterAll(async () => {
         try {
-            await prisma.conteudo.deleteMany({ where: { usuario: { email: teacherEmail } } });
-            await prisma.logs.deleteMany({ where: { usuario: { email: teacherEmail } } });
-            await prisma.usuario.deleteMany({ where: { email: teacherEmail } });
+            const emails = [teacherEmail, studentEmail];
+            await prisma.conteudo.deleteMany({ where: { usuario: { email: { in: emails } } } });
+            await prisma.logs.deleteMany({ where: { usuario: { email: { in: emails } } } });
+            await prisma.usuario.deleteMany({ where: { email: { in: emails } } });
         } finally {
             await Promise.all([app.close(), prisma.$disconnect()]);
         }
@@ -259,6 +261,44 @@ describe("Teste de integração de conteúdos", () => {
         expect(body.code).toBe("FST_JWT_NO_AUTHORIZATION_IN_HEADER");
         expect(body.message).toBe("No Authorization was found in request.headers");
 
+        const total = await prisma.conteudo.count({ where: { title: content.title } });
+        expect(total).toBe(0);
+    }, 30000);
+
+    test("deve impedir que um aluno autenticado cadastre conteúdo", async () => {
+        await prisma.usuario.create({
+            data: {
+                name: "Aluno Teste",
+                email: studentEmail,
+                senha: await bcrypt.hash(password, 10),
+                role: user_role.Aluno_a_
+            }
+        });
+
+        const login = await fetch(`${baseUrl}/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: studentEmail, password })
+        });
+        expect(login.status).toBe(200);
+        const loginBody = await login.json();
+        expect(loginBody.token).toEqual(expect.any(String));
+        const studentToken = loginBody.token;
+        const content = {
+            title: `Conteúdo do aluno ${randomUUID()}`,
+            description: "Tentativa de cadastro por um aluno autenticado."
+        };
+        const response = await fetch(`${baseUrl}/api/contents`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${studentToken}`
+            },
+            body: JSON.stringify(content)
+        });
+        expect(response.status).toBe(403);
+        const body = await response.json();
+        expect(body.message).toBe("Somente professores podem executar esta ação");
         const total = await prisma.conteudo.count({ where: { title: content.title } });
         expect(total).toBe(0);
     }, 30000);
