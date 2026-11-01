@@ -140,4 +140,51 @@ describe("Teste de integração de conteúdos", () => {
             description: content.description
         });
     }, 30000);
+
+    test("deve permitir que o professor atualize seu próprio conteúdo", async () => {
+        const content = {
+            title: "Orientações iniciais",
+            description: "Leia as orientações antes de entrar no laboratório."
+        };
+
+        const createResponse = await fetch(`${baseUrl}/api/contents`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(content)
+        });
+        expect(createResponse.status).toBe(201);
+        const createdContent = await createResponse.json();
+
+        const updatedContent = {
+            title: "Orientações atualizadas",
+            description: "Confira as novas orientações de segurança do laboratório."
+        };
+        const response = await fetch(`${baseUrl}/api/contents/${createdContent.id}`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(updatedContent)
+        });
+        expect(response.status).toBe(200);
+        const body = await response.json();
+        expect(body).toMatchObject({
+            id: createdContent.id,
+            teacherId,
+            title: updatedContent.title,
+            description: updatedContent.description
+        });
+
+        const savedContent = await prisma.conteudo.findUniqueOrThrow({ where: { id: createdContent.id } });
+        expect(savedContent).toMatchObject({
+            id: createdContent.id,
+            professor_id: teacherId,
+            title: updatedContent.title,
+            description: updatedContent.description
+        });
+    }, 30000);
 });
