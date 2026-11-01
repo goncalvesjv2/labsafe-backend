@@ -187,4 +187,32 @@ describe("Teste de integração de conteúdos", () => {
             description: updatedContent.description
         });
     }, 30000);
+
+    test("deve permitir que o professor exclua seu próprio conteúdo", async () => {
+        const content = {
+            title: "Conteúdo para exclusão",
+            description: "Este conteúdo será removido durante o teste."
+        };
+
+        const createResponse = await fetch(`${baseUrl}/api/contents`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(content)
+        });
+        expect(createResponse.status).toBe(201);
+        const createdContent = await createResponse.json();
+
+        const response = await fetch(`${baseUrl}/api/contents/${createdContent.id}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        expect(response.status).toBe(204);
+        expect(await response.text()).toBe("");
+
+        const deletedContent = await prisma.conteudo.findUnique({ where: { id: createdContent.id } });
+        expect(deletedContent).toBeNull();
+    }, 30000);
 });
