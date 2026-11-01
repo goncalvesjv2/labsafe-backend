@@ -109,4 +109,35 @@ describe("Teste de integração de conteúdos", () => {
             description: content.description
         }));
     }, 30000);
+
+    test("deve consultar um conteúdo pelo ID", async () => {
+        const content = {
+            title: "Uso de luvas de proteção",
+            description: "Utilize luvas adequadas ao manusear produtos químicos."
+        };
+
+        const createResponse = await fetch(`${baseUrl}/api/contents`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(content)
+        });
+        expect(createResponse.status).toBe(201);
+        const createdContent = await createResponse.json();
+
+        const response = await fetch(`${baseUrl}/api/contents/${createdContent.id}`, {
+            method: "GET",
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        expect(response.status).toBe(200);
+        const body = await response.json();
+        expect(body).toMatchObject({
+            id: createdContent.id,
+            teacherId,
+            title: content.title,
+            description: content.description
+        });
+    }, 30000);
 });
