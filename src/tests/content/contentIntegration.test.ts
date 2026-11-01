@@ -78,4 +78,35 @@ describe("Teste de integração de conteúdos", () => {
             description: content.description
         });
     }, 30000);
+
+    test("deve listar conteúdos e encontrar o conteúdo cadastrado", async () => {
+        const content = {
+            title: "Cuidados com os equipamentos",
+            description: "Confira os equipamentos antes de iniciar as atividades."
+        };
+
+        const createResponse = await fetch(`${baseUrl}/api/contents`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(content)
+        });
+        expect(createResponse.status).toBe(201);
+        const createdContent = await createResponse.json();
+
+        const response = await fetch(`${baseUrl}/api/contents`, {
+            method: "GET",
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        expect(response.status).toBe(200);
+        const body = await response.json();
+        expect(body).toContainEqual(expect.objectContaining({
+            id: createdContent.id,
+            teacherId,
+            title: content.title,
+            description: content.description
+        }));
+    }, 30000);
 });
