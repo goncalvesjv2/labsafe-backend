@@ -215,4 +215,31 @@ describe("Teste de integração de conteúdos", () => {
         const deletedContent = await prisma.conteudo.findUnique({ where: { id: createdContent.id } });
         expect(deletedContent).toBeNull();
     }, 30000);
+
+    test("deve rejeitar cadastro de conteúdo com título vazio", async () => {
+        const content = {
+            title: "",
+            description: "Descrição válida para testar o título obrigatório."
+        };
+        const totalBefore = await prisma.conteudo.count({ where: { professor_id: teacherId } });
+
+        const response = await fetch(`${baseUrl}/api/contents`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(content)
+        });
+        expect(response.status).toBe(400);
+        const body = await response.json();
+        expect(body.message).toBe("Dados inválidos");
+        expect(body.errors).toContainEqual(expect.objectContaining({
+            path: ["title"],
+            message: "O título é obrigatório"
+        }));
+
+        const totalAfter = await prisma.conteudo.count({ where: { professor_id: teacherId } });
+        expect(totalAfter).toBe(totalBefore);
+    }, 30000);
 });
