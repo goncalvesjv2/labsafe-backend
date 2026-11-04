@@ -70,7 +70,11 @@ export async function updateUserService(id: number, user: UpdateUser, userId: nu
     return updateUser;
 }
 
-export async function deleteUserService(id: number) {
+export async function deleteUserService(id: number, userId: number) {
+    if (id === userId) {
+        throw new Error("Você não pode excluir sua própria conta");
+    }
+
     const deleteUser = await deleteUserRepository(id);
     
     if (!deleteUser) {

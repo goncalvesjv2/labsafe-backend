@@ -10,6 +10,7 @@ import { UserRole } from "../../utils/user";
 describe("Teste de integração de usuários", () => {
     let baseUrl: string;
     let token: string;
+    let adminId: number;
     const adminEmail = `admin.${randomUUID()}@example.com`;
     const email = `aluno.${randomUUID()}@example.com`;
     const listEmail = `listagem.${randomUUID()}@example.com`;
@@ -24,7 +25,7 @@ describe("Teste de integração de usuários", () => {
     beforeAll(async () => {
         baseUrl = await app.listen({ port: 0, host: "127.0.0.1" });
 
-        await prisma.usuario.create({
+        const admin = await prisma.usuario.create({
             data: {
                 name: "Administrador Teste",
                 email: adminEmail,
@@ -32,6 +33,7 @@ describe("Teste de integração de usuários", () => {
                 role: user_role.Admin
             }
         });
+        adminId = admin.id;
         
         const login = await fetch(`${baseUrl}/auth/login`, {
             method: "POST",
@@ -169,6 +171,22 @@ describe("Teste de integração de usuários", () => {
 
         const savedUser = await prisma.usuario.findUniqueOrThrow({ where: { id: createdUser.id } });
         expect(savedUser.name).toBe(updatedUser.name);
+    }, 30000);
+
+    test("deve impedir que o administrador exclua a própria conta", async () => {
+        const response = await fetch(`${baseUrl}/api/users/${adminId}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        expect(response.status).toBe(403);
+        const body = await response.json();
+        expect(body.message).toBe("Você não pode excluir sua própria conta");
+
+        const admin = await prisma.usuario.findUniqueOrThrow({ where: { id: adminId } });
+        expect(admin.email).toBe(adminEmail);
+        expect(admin.role).toBe(user_role.Admin);
+        expect(admin.ativo).toBe(true);
     }, 30000);
 
     test("deve excluir um usuário", async () => {

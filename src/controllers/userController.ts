@@ -78,9 +78,14 @@ export async function deleteUserController(request: FastifyRequest<{Params: {id:
         if (!Number.isInteger(id) || id <= 0) {
             return reply.status(400).send({message: "ID inválido"});
         }
-        await deleteUserService(id);
+        const logged = request.user as IPayload;
+        await deleteUserService(id, logged.sub);
         return reply.status(204).send();
     } catch (error) {
+        if (error instanceof Error && error.message === "Você não pode excluir sua própria conta") {
+            return reply.status(403).send({message: error.message});
+        }
+
         return reply.status(400).send(error);
     }
 }

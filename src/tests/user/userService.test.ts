@@ -95,6 +95,42 @@ describe("createUserService", () => {
     });
 });
 
+describe("deleteUserService", () => {
+    const deleteUserRepository = jest.fn<(id: number) => Promise<unknown>>();
+
+    beforeEach(() => {
+        jest.resetModules();
+        deleteUserRepository.mockReset();
+        jest.doMock("../../repositories/userRepository", () => ({ deleteUserRepository }));
+        jest.doMock("../../services/logService", () => ({ createLogService: jest.fn() }));
+    });
+
+    afterEach(() => {
+        jest.dontMock("../../repositories/userRepository");
+        jest.dontMock("../../services/logService");
+        jest.resetModules();
+    });
+
+    test("deve bloquear a exclusão da própria conta antes de acessar o banco", async () => {
+        const { deleteUserService } = await import("../../services/userService");
+
+        await expect(deleteUserService(10, 10)).rejects.toThrow("Você não pode excluir sua própria conta");
+        expect(deleteUserRepository).not.toHaveBeenCalled();
+    });
+
+    test("deve permitir a exclusão de outro usuário", async () => {
+        const { deleteUserService } = await import("../../services/userService");
+        const user = { id: 7, name: "Aluno Teste", role: UserRole.ALUNO };
+        deleteUserRepository.mockResolvedValue(user);
+
+        const result = await deleteUserService(7, 10);
+
+        expect(result).toEqual(user);
+        expect(deleteUserRepository).toHaveBeenCalledWith(7);
+        expect(deleteUserRepository).toHaveBeenCalledTimes(1);
+    });
+});
+
 describe("updateUserService", () => {
     const user = {
         name: "Ana",
