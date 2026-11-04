@@ -38,7 +38,7 @@ describe("Teste de integração de usuários", () => {
         const login = await fetch(`${baseUrl}/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: adminEmail, password })
+            body: JSON.stringify({ email: `  ${adminEmail.toUpperCase()}  `, password })
         });
         expect(login.status).toBe(200);
         const loginBody = await login.json();
@@ -56,8 +56,8 @@ describe("Teste de integração de usuários", () => {
         }
     }, 30000);
 
-    test("deve criar um usuário", async () => {
-        const user = { name: "Aluno Teste", email, password, role: UserRole.ALUNO };
+    test("deve criar um usuário salvando o e-mail em minúsculas e sem espaços nas extremidades", async () => {
+        const user = { name: "Aluno Teste", email: `  ${email.toUpperCase()}  `, password, role: UserRole.ALUNO };
 
         const response = await fetch(`${baseUrl}/api/users`, {
             method: "POST",
@@ -135,7 +135,7 @@ describe("Teste de integração de usuários", () => {
         expect(body).not.toHaveProperty("password");
     }, 30000);
 
-    test("deve atualizar um usuário e salvar a alteração", async () => {
+    test("deve atualizar um usuário salvando o e-mail em minúsculas e sem espaços nas extremidades", async () => {
         const user = { name: "Aluno Antes", email: updateEmail, password, role: UserRole.ALUNO };
 
         const createResponse = await fetch(`${baseUrl}/api/users`, {
@@ -149,7 +149,7 @@ describe("Teste de integração de usuários", () => {
         expect(createResponse.status).toBe(201);
         const createdUser = await createResponse.json();
 
-        const updatedUser = { name: "Aluno Atualizado", email: updateEmail, role: UserRole.ALUNO };
+        const updatedUser = { name: "Aluno Atualizado", email: `  ${updateEmail.toUpperCase()}  `, role: UserRole.ALUNO };
         const response = await fetch(`${baseUrl}/api/users/${createdUser.id}`, {
             method: "PATCH",
             headers: {
@@ -171,6 +171,7 @@ describe("Teste de integração de usuários", () => {
 
         const savedUser = await prisma.usuario.findUniqueOrThrow({ where: { id: createdUser.id } });
         expect(savedUser.name).toBe(updatedUser.name);
+        expect(savedUser.email).toBe(updateEmail);
     }, 30000);
 
     test("deve impedir que o administrador exclua a própria conta", async () => {
@@ -214,7 +215,7 @@ describe("Teste de integração de usuários", () => {
         expect(deletedUser).toBeNull();
     }, 30000);
 
-    test("deve rejeitar cadastro com e-mail já utilizado", async () => {
+    test("deve rejeitar cadastro com e-mail já utilizado mesmo com letras maiúsculas e espaços", async () => {
         const user = { name: "Aluno Original", email: duplicateEmail, password, role: UserRole.ALUNO };
         const createResponse = await fetch(`${baseUrl}/api/users`, {
             method: "POST",
@@ -226,7 +227,7 @@ describe("Teste de integração de usuários", () => {
         });
         expect(createResponse.status).toBe(201);
         const createdUser = await createResponse.json();
-        const duplicateUser = { name: "Outro Aluno", email: duplicateEmail, password, role: UserRole.ALUNO };
+        const duplicateUser = { name: "Outro Aluno", email: `  ${duplicateEmail.toUpperCase()}  `, password, role: UserRole.ALUNO };
         const response = await fetch(`${baseUrl}/api/users`, {
             method: "POST",
             headers: {

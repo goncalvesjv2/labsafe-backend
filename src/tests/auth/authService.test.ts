@@ -5,7 +5,7 @@ describe("loginService", () => {
         jest.resetModules();
     });
 
-    test("deve autenticar removendo os espaços das extremidades da senha", async () => {
+    test("deve autenticar normalizando o e-mail e removendo os espaços das extremidades da senha", async () => {
         const listUserByEmailRepository = jest.fn<(...args: any[]) => Promise<any>>();
         const comparePassword = jest.fn<(...args: any[]) => Promise<any>>();
         const generateToken = jest.fn<(...args: any[]) => Promise<any>>();
@@ -58,7 +58,7 @@ describe("loginService", () => {
         generateToken.mockResolvedValue(token);
         createLogService.mockResolvedValue(undefined);
 
-        const result = await loginService(email, password);
+        const result = await loginService(`  ${email.toUpperCase()}  `, password);
 
         expect(result).toEqual(token);
         expect(listUserByEmailRepository).toHaveBeenCalledWith(email);
