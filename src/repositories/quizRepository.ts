@@ -1,0 +1,66 @@
+import { prisma } from "../database/prisma";
+import type { ICreateQuiz, IQuiz } from "../interfaces/IQuiz";
+
+export async function listQuizzesRepository(): Promise<IQuiz[]> {
+    const quizzes = await prisma.quiz.findMany();
+
+    return quizzes.map((quiz) => ({
+        id: quiz.id,
+        contentId: quiz.conteudo_id
+    }));
+}
+
+export async function listQuizByIdRepository(id: number): Promise<IQuiz | null> {
+    const quiz = await prisma.quiz.findUnique({
+        where: { id }
+    });
+
+    return quiz ? {
+        id: quiz.id,
+        contentId: quiz.conteudo_id
+    } : null;
+}
+
+export async function listQuizByContentIdRepository(contentId: number): Promise<IQuiz | null> {
+    const quiz = await prisma.quiz.findUnique({
+        where: { conteudo_id: contentId }
+    });
+
+    return quiz ? {
+        id: quiz.id,
+        contentId: quiz.conteudo_id
+    } : null;
+}
+
+export async function createQuizRepository(quiz: ICreateQuiz): Promise<IQuiz> {
+    const newQuiz = await prisma.quiz.create({
+        data: {
+            conteudo_id: quiz.contentId
+        }
+    });
+
+    return {
+        id: newQuiz.id,
+        contentId: newQuiz.conteudo_id
+    };
+}
+
+export async function updateQuizRepository(id: number, quiz: ICreateQuiz): Promise<IQuiz> {
+    const updatedQuiz = await prisma.quiz.update({
+        where: { id },
+        data: {
+            conteudo_id: quiz.contentId
+        }
+    });
+
+    return {
+        id: updatedQuiz.id,
+        contentId: updatedQuiz.conteudo_id
+    };
+}
+
+export async function deleteQuizRepository(id: number): Promise<void> {
+    await prisma.quiz.delete({
+        where: { id }
+    });
+}

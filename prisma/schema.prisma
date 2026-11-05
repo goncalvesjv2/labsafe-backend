@@ -33,6 +33,13 @@ model conteudo {
   title        String  @db.VarChar(150)
   description  String
   usuario      usuario @relation(fields: [professor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  quiz         quiz?
+}
+
+model quiz {
+  id          Int      @id @default(autoincrement())
+  conteudo_id Int      @unique
+  conteudo    conteudo @relation(fields: [conteudo_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 enum user_role {
