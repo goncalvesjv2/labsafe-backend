@@ -8,12 +8,21 @@ import bcrypt from "bcrypt";
 
 describe("API de usuários", () => {
     let userId: number | undefined;
+    let adminId: number | undefined;
     let email: string;
     let token: string;
 
     beforeAll(async () => {
         await app.ready();
-        const admin = { id: 1, name: "Administrador Teste", role: user_role.Admin };
+        const admin = await prisma.usuario.create({
+            data: {
+                name: "Administrador Teste E2E",
+                email: "admin.e2e." + Date.now() + "@example.com",
+                senha: await bcrypt.hash("SenhaTeste123!", 10),
+                role: user_role.Admin
+            }
+        });
+        adminId = admin.id;
         token = generateToken(admin).token;
     });
 
@@ -33,9 +42,13 @@ describe("API de usuários", () => {
             }
         });
 
+        // Guarda o ID antes das verificações para permitir a limpeza em caso de falha.
+        const savedUser = await prisma.usuario.findUnique({ where: { email } });
+        userId = savedUser?.id;
+
         expect(response.statusCode).toBe(201);
-        userId = response.json().id;
         expect(userId).toBeDefined();
+        expect(response.json().id).toBe(userId);
     });
 
     afterEach(async () => {
@@ -51,9 +64,12 @@ describe("API de usuários", () => {
 
     afterAll(async () => {
         try {
-            await app.close();
+            if (adminId !== undefined) {
+                await prisma.logs.deleteMany({ where: { user_id: adminId } });
+                await prisma.usuario.delete({ where: { id: adminId } });
+            }
         } finally {
-            await prisma.$disconnect();
+            await Promise.all([app.close(), prisma.$disconnect()]);
         }
     });
 
