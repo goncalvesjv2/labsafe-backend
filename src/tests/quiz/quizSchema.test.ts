@@ -6,26 +6,22 @@ describe("Validação de cadastro e atualização de quiz", () => {
         expect(quizSchema.parse({ contentId: 1 })).toEqual({ contentId: 1 });
     });
 
-    test.each([
-        ["ausente", {}],
-        ["undefined", { contentId: undefined }],
-        ["null", { contentId: null }],
-        ["texto numérico", { contentId: "1" }],
-        ["booleano", { contentId: true }],
-        ["zero", { contentId: 0 }],
-        ["negativo", { contentId: -1 }],
-        ["decimal", { contentId: 1.5 }],
-        ["NaN", { contentId: NaN }],
-        ["infinito", { contentId: Infinity }]
-    ])("deve rejeitar contentId %s", (_name, input) => {
-        const result = quizSchema.safeParse(input);
-        expect(result.success).toBe(false);
-        expect(result.error?.issues[0].path).toEqual(["contentId"]);
+    test("deve rejeitar IDs que não sejam números inteiros e positivos", () => {
+        const invalidIds = [undefined, null, "1", true, 0, -1, 1.5, NaN, Infinity];
+
+        for (const contentId of invalidIds) {
+            const result = quizSchema.safeParse({ contentId });
+            expect(result.success).toBe(false);
+            expect(result.error?.issues[0].path).toEqual(["contentId"]);
+        }
+    });
+
+    test("deve exigir o conteúdo no cadastro e na atualização", () => {
+        expect(quizSchema.safeParse({}).success).toBe(false);
     });
 
     test("deve remover campos que não pertencem ao cadastro", () => {
-        expect(quizSchema.parse({ contentId: 1, id: 99, teacherId: 20 }))
-            .toEqual({ contentId: 1 });
+        expect(quizSchema.parse({ contentId: 1, id: 99, teacherId: 20 })).toEqual({ contentId: 1 });
     });
 
     test("deve rejeitar um corpo nulo", () => {

@@ -53,20 +53,15 @@ const content = {
     description: "Utilize os equipamentos de proteção."
 };
 
-const targetContent = { ...content, id: 2 };
 const savedQuiz = { id: 5, contentId: content.id };
 const input = { contentId: content.id };
-const changes = { contentId: targetContent.id };
+const changes = { contentId: 2 };
 const updatedQuiz = { ...savedQuiz, ...changes };
 
 beforeEach(() => {
     jest.resetAllMocks();
     listUserByIdMock.mockResolvedValue(teacher);
-    listContentByIdMock.mockImplementation(async (id) => {
-        if (id === content.id) return content;
-        if (id === targetContent.id) return targetContent;
-        return null;
-    });
+    listContentByIdMock.mockResolvedValue(content);
     listQuizzesMock.mockResolvedValue([savedQuiz]);
     listQuizByIdMock.mockResolvedValue(savedQuiz);
     listQuizByContentIdMock.mockResolvedValue(null);
@@ -82,71 +77,76 @@ function expectNoWrites() {
     expect(createLogMock).not.toHaveBeenCalled();
 }
 
-const mutations = [
-    {
-        name: "cadastro",
-        execute: () => createQuizService(input, teacher.id),
-        write: createQuizMock,
-        roleError: "Somente professores podem criar quizzes"
-    },
-    {
-        name: "atualização",
-        execute: () => updateQuizService(savedQuiz.id, changes, teacher.id),
-        write: updateQuizMock,
-        roleError: "Somente professores podem atualizar quizzes"
-    },
-    {
-        name: "exclusão",
-        execute: () => deleteQuizService(savedQuiz.id, teacher.id),
-        write: deleteQuizMock,
-        roleError: "Somente professores podem excluir quizzes"
-    }
-];
-
-describe.each(mutations)("Permissões e falhas no $name", ({ execute, write, roleError }) => {
+describe("Regras comuns de cadastro, atualização e exclusão", () => {
     test("deve impedir a operação quando o usuário não existe", async () => {
         listUserByIdMock.mockResolvedValue(null);
-        await expect(execute()).rejects.toThrow("Usuário não encontrado");
+        await expect(createQuizService(input, teacher.id)).rejects.toThrow("Usuário não encontrado");
+        await expect(updateQuizService(savedQuiz.id, changes, teacher.id)).rejects.toThrow("Usuário não encontrado");
+        await expect(deleteQuizService(savedQuiz.id, teacher.id)).rejects.toThrow("Usuário não encontrado");
         expectNoWrites();
     });
 
-    test.each([UserRole.ALUNO, UserRole.ADMIN])("deve impedir a operação para o perfil %s", async (role) => {
-        listUserByIdMock.mockResolvedValue({ ...teacher, role });
-        await expect(execute()).rejects.toThrow(roleError);
+    test("deve impedir que um aluno altere quizzes", async () => {
+        listUserByIdMock.mockResolvedValue({ ...teacher, role: UserRole.ALUNO });
+        await expect(createQuizService(input, teacher.id)).rejects.toThrow("Somente professores podem criar quizzes");
+        await expect(updateQuizService(savedQuiz.id, changes, teacher.id)).rejects.toThrow("Somente professores podem atualizar quizzes");
+        await expect(deleteQuizService(savedQuiz.id, teacher.id)).rejects.toThrow("Somente professores podem excluir quizzes");
+        expectNoWrites();
+    });
+
+    test("deve impedir que um administrador altere quizzes", async () => {
+        listUserByIdMock.mockResolvedValue({ ...teacher, role: UserRole.ADMIN });
+        await expect(createQuizService(input, teacher.id)).rejects.toThrow("Somente professores podem criar quizzes");
+        await expect(updateQuizService(savedQuiz.id, changes, teacher.id)).rejects.toThrow("Somente professores podem atualizar quizzes");
+        await expect(deleteQuizService(savedQuiz.id, teacher.id)).rejects.toThrow("Somente professores podem excluir quizzes");
         expectNoWrites();
     });
 
     test("deve impedir a operação em conteúdo de outro professor", async () => {
         listContentByIdMock.mockResolvedValue({ ...content, teacherId: 20 });
-        await expect(execute()).rejects.toThrow(/seus próprios/);
+        await expect(createQuizService(input, teacher.id)).rejects.toThrow("Você pode somente criar quizzes para seus próprios conteúdos");
+        await expect(updateQuizService(savedQuiz.id, changes, teacher.id)).rejects.toThrow("Você pode somente atualizar seus próprios quizzes");
+        await expect(deleteQuizService(savedQuiz.id, teacher.id)).rejects.toThrow("Você só pode excluir seus próprios quizzes");
         expectNoWrites();
     });
 
     test("deve impedir a operação quando o conteúdo não existe", async () => {
         listContentByIdMock.mockResolvedValue(null);
-        await expect(execute()).rejects.toThrow("Conteúdo não encontrado");
+        await expect(createQuizService(input, teacher.id)).rejects.toThrow("Conteúdo não encontrado");
+        await expect(updateQuizService(savedQuiz.id, changes, teacher.id)).rejects.toThrow("Conteúdo não encontrado");
+        await expect(deleteQuizService(savedQuiz.id, teacher.id)).rejects.toThrow("Conteúdo não encontrado");
         expectNoWrites();
     });
 
     test("deve propagar falhas na consulta sem alterar registros", async () => {
         const error = new Error("Falha ao consultar conteúdo");
         listContentByIdMock.mockRejectedValue(error);
-        await expect(execute()).rejects.toBe(error);
+        await expect(createQuizService(input, teacher.id)).rejects.toBe(error);
+        await expect(updateQuizService(savedQuiz.id, changes, teacher.id)).rejects.toBe(error);
+        await expect(deleteQuizService(savedQuiz.id, teacher.id)).rejects.toBe(error);
         expectNoWrites();
     });
 
     test("não deve registrar sucesso se a gravação falhar", async () => {
         const error = new Error("Falha ao gravar quiz");
-        write.mockRejectedValue(error);
-        await expect(execute()).rejects.toBe(error);
+        createQuizMock.mockRejectedValue(error);
+        updateQuizMock.mockRejectedValue(error);
+        deleteQuizMock.mockRejectedValue(error);
+        await expect(createQuizService(input, teacher.id)).rejects.toBe(error);
+        await expect(updateQuizService(savedQuiz.id, changes, teacher.id)).rejects.toBe(error);
+        await expect(deleteQuizService(savedQuiz.id, teacher.id)).rejects.toBe(error);
         expect(createLogMock).not.toHaveBeenCalled();
     });
 
     test("deve propagar falhas no registro do log", async () => {
         const error = new Error("Log não foi registrado");
         createLogMock.mockRejectedValue(error);
-        await expect(execute()).rejects.toBe(error);
-        expect(write).toHaveBeenCalledTimes(1);
+        await expect(createQuizService(input, teacher.id)).rejects.toBe(error);
+        await expect(updateQuizService(savedQuiz.id, changes, teacher.id)).rejects.toBe(error);
+        await expect(deleteQuizService(savedQuiz.id, teacher.id)).rejects.toBe(error);
+        expect(createQuizMock).toHaveBeenCalledTimes(1);
+        expect(updateQuizMock).toHaveBeenCalledTimes(1);
+        expect(deleteQuizMock).toHaveBeenCalledTimes(1);
     });
 });
 
@@ -194,6 +194,7 @@ describe("createQuizService", () => {
 
 describe("updateQuizService", () => {
     test("deve permitir trocar para outro conteúdo do mesmo professor", async () => {
+        listContentByIdMock.mockResolvedValueOnce(content).mockResolvedValueOnce({ ...content, id: changes.contentId });
         await expect(updateQuizService(savedQuiz.id, changes, teacher.id)).resolves.toEqual(updatedQuiz);
         expect(listQuizByIdMock).toHaveBeenCalledWith(savedQuiz.id);
         expect(listContentByIdMock).toHaveBeenCalledWith(savedQuiz.contentId);
@@ -214,24 +215,21 @@ describe("updateQuizService", () => {
     });
 
     test("deve impedir vincular o quiz ao conteúdo de outro professor", async () => {
-        listContentByIdMock.mockResolvedValueOnce(content)
-            .mockResolvedValueOnce({ ...targetContent, teacherId: 20 });
-        await expect(updateQuizService(savedQuiz.id, changes, teacher.id))
-            .rejects.toThrow("Você pode somente vincular quizzes aos seus próprios conteúdos");
+        listContentByIdMock.mockResolvedValueOnce(content).mockResolvedValueOnce({ ...content, id: changes.contentId, teacherId: 20 });
+        await expect(updateQuizService(savedQuiz.id, changes, teacher.id)).rejects.toThrow("Você pode somente vincular quizzes aos seus próprios conteúdos");
         expectNoWrites();
     });
 
     test("deve impedir a troca para um conteúdo inexistente", async () => {
         listContentByIdMock.mockResolvedValueOnce(content).mockResolvedValueOnce(null);
-        await expect(updateQuizService(savedQuiz.id, changes, teacher.id))
-            .rejects.toThrow("Conteúdo não encontrado");
+        await expect(updateQuizService(savedQuiz.id, changes, teacher.id)).rejects.toThrow("Conteúdo não encontrado");
         expectNoWrites();
     });
 
     test("deve impedir a troca para um conteúdo que possui outro quiz", async () => {
-        listQuizByContentIdMock.mockResolvedValue({ id: 6, contentId: targetContent.id });
-        await expect(updateQuizService(savedQuiz.id, changes, teacher.id))
-            .rejects.toThrow("Este conteúdo já possui um quiz");
+        listContentByIdMock.mockResolvedValueOnce(content).mockResolvedValueOnce({ ...content, id: changes.contentId });
+        listQuizByContentIdMock.mockResolvedValue({ id: 6, contentId: changes.contentId });
+        await expect(updateQuizService(savedQuiz.id, changes, teacher.id)).rejects.toThrow("Este conteúdo já possui um quiz");
         expectNoWrites();
     });
 
