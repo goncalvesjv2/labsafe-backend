@@ -6,6 +6,7 @@ import { authRoutes } from "./routes/authRoutes";
 import fastifyJwt from "@fastify/jwt";
 import { pubChemRoutes } from "./routes/pubChemRoutes";
 import { contentRoutes } from "./routes/contentRoutes";
+import { quizRoutes } from "./routes/quizRoutes";
 
 export const app = Fastify({ logger: true });
 
@@ -28,3 +29,4 @@ app.register(userRoutes, { prefix: '/api' });
 app.register(authRoutes, { prefix: '/auth' });
 app.register(pubChemRoutes, { prefix: '/api' });
 app.register(contentRoutes, { prefix: "/api" });
+app.register(quizRoutes, { prefix: "/api" });
