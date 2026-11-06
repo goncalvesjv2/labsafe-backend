@@ -15,6 +15,10 @@ describe("Teste de integração de conteúdos", () => {
     const studentEmail = `aluno.conteudo.${randomUUID()}@example.com`;
     const adminEmail = `admin.conteudo.${randomUUID()}@example.com`;
     const newTeacherEmail = `professor.fluxo.${randomUUID()}@example.com`;
+    const studentListEmail = `aluno.listagem.${randomUUID()}@example.com`;
+    const studentDetailEmail = `aluno.consulta.${randomUUID()}@example.com`;
+    const adminListEmail = `admin.listagem.${randomUUID()}@example.com`;
+    const adminDetailEmail = `admin.consulta.${randomUUID()}@example.com`;
     const password = "SenhaTeste123!";
 
     beforeAll(async () => {
@@ -42,7 +46,8 @@ describe("Teste de integração de conteúdos", () => {
 
     afterAll(async () => {
         try {
-            const emails = [teacherEmail, studentEmail, adminEmail, newTeacherEmail];
+            const emails = [teacherEmail, studentEmail, adminEmail, newTeacherEmail,
+                studentListEmail, studentDetailEmail, adminListEmail, adminDetailEmail];
             await prisma.conteudo.deleteMany({ where: { usuario: { email: { in: emails } } } });
             await prisma.logs.deleteMany({ where: { usuario: { email: { in: emails } } } });
             await prisma.usuario.deleteMany({ where: { email: { in: emails } } });
@@ -144,6 +149,147 @@ describe("Teste de integração de conteúdos", () => {
             title: content.title,
             description: content.description
         });
+    }, 30000);
+
+    test("deve permitir que um aluno autenticado liste os conteúdos", async () => {
+        await prisma.usuario.create({
+            data: {
+                name: "Aluno da listagem",
+                email: studentListEmail,
+                senha: await bcrypt.hash(password, 10),
+                role: user_role.Aluno_a_
+            }
+        });
+        const login = await fetch(`${baseUrl}/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: studentListEmail, password })
+        });
+        expect(login.status).toBe(200);
+        const loginBody = await login.json();
+        expect(loginBody.token).toEqual(expect.any(String));
+
+        const content = await prisma.conteudo.create({
+            data: {
+                professor_id: teacherId,
+                title: "Conteúdo disponível para alunos",
+                description: "Orientações de segurança para consulta."
+            }
+        });
+        const response = await fetch(`${baseUrl}/api/contents`, {
+            method: "GET",
+            headers: { Authorization: `Bearer ${loginBody.token}` }
+        });
+        expect(response.status).toBe(200);
+        const body = await response.json();
+        expect(body).toContainEqual(expect.objectContaining({ id: content.id, teacherId }));
+    }, 30000);
+
+    test("deve permitir que um aluno autenticado consulte um conteúdo pelo ID", async () => {
+        await prisma.usuario.create({
+            data: {
+                name: "Aluno da consulta",
+                email: studentDetailEmail,
+                senha: await bcrypt.hash(password, 10),
+                role: user_role.Aluno_a_
+            }
+        });
+        const login = await fetch(`${baseUrl}/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: studentDetailEmail, password })
+        });
+        expect(login.status).toBe(200);
+        const loginBody = await login.json();
+        expect(loginBody.token).toEqual(expect.any(String));
+
+        const content = await prisma.conteudo.create({
+            data: {
+                professor_id: teacherId,
+                title: "Uso dos equipamentos de proteção",
+                description: "Consulte os equipamentos necessários para a atividade."
+            }
+        });
+        const response = await fetch(`${baseUrl}/api/contents/${content.id}`, {
+            method: "GET",
+            headers: { Authorization: `Bearer ${loginBody.token}` }
+        });
+        expect(response.status).toBe(200);
+        const body = await response.json();
+        expect(body).toMatchObject({ id: content.id, teacherId, title: content.title, description: content.description });
+    }, 30000);
+
+    test("deve impedir que um administrador liste os conteúdos e registrar a tentativa", async () => {
+        const admin = await prisma.usuario.create({
+            data: {
+                name: "Administrador da listagem",
+                email: adminListEmail,
+                senha: await bcrypt.hash(password, 10),
+                role: user_role.Admin
+            }
+        });
+        const login = await fetch(`${baseUrl}/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: adminListEmail, password })
+        });
+        expect(login.status).toBe(200);
+        const loginBody = await login.json();
+        expect(loginBody.token).toEqual(expect.any(String));
+
+        const response = await fetch(`${baseUrl}/api/contents`, {
+            method: "GET",
+            headers: { Authorization: `Bearer ${loginBody.token}` }
+        });
+        expect(response.status).toBe(403);
+        const body = await response.json();
+        expect(body.message).toBe("Somente professores e alunos podem acessar os conteúdos");
+
+        const logs = await prisma.logs.findMany({
+            where: { user_id: admin.id, action: "FALHA_AUTORIZACAO" }
+        });
+        expect(logs).toHaveLength(1);
+        expect(logs[0].description).toBe("Usuário tentou acessar uma ação exclusiva de professor ou aluno");
+    }, 30000);
+
+    test("deve impedir que um administrador consulte um conteúdo existente pelo ID", async () => {
+        const admin = await prisma.usuario.create({
+            data: {
+                name: "Administrador da consulta",
+                email: adminDetailEmail,
+                senha: await bcrypt.hash(password, 10),
+                role: user_role.Admin
+            }
+        });
+        const login = await fetch(`${baseUrl}/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: adminDetailEmail, password })
+        });
+        expect(login.status).toBe(200);
+        const loginBody = await login.json();
+        expect(loginBody.token).toEqual(expect.any(String));
+
+        const content = await prisma.conteudo.create({
+            data: {
+                professor_id: teacherId,
+                title: "Conteúdo restrito a professores e alunos",
+                description: "O administrador não pode acessar este conteúdo."
+            }
+        });
+        const response = await fetch(`${baseUrl}/api/contents/${content.id}`, {
+            method: "GET",
+            headers: { Authorization: `Bearer ${loginBody.token}` }
+        });
+        expect(response.status).toBe(403);
+        const body = await response.json();
+        expect(body.message).toBe("Somente professores e alunos podem acessar os conteúdos");
+
+        const logs = await prisma.logs.findMany({
+            where: { user_id: admin.id, action: "FALHA_AUTORIZACAO" }
+        });
+        expect(logs).toHaveLength(1);
+        expect(logs[0].description).toBe("Usuário tentou acessar uma ação exclusiva de professor ou aluno");
     }, 30000);
 
     test("deve permitir que o professor atualize seu próprio conteúdo", async () => {
