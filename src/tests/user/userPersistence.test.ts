@@ -61,10 +61,10 @@ describe("updateUserRepository", () => {
     beforeEach(() => {
         jest.resetModules();
         update.mockReset();
-        update.mockResolvedValue(storedUser);
+        update.mockResolvedValue([storedUser]);
 
         jest.doMock("../../database/prisma", () => ({
-            prisma: { usuario: { update } }
+            prisma: { usuario: { updateManyAndReturn: update } }
         }));
     });
 
@@ -104,12 +104,7 @@ describe("updateUserRepository", () => {
 
     test("deve retornar null quando o usuário não existe", async () => {
         const { updateUserRepository } = await import("../../repositories/userRepository");
-        const { Prisma } = await import("../../generated/prisma/client");
-        const error = new Prisma.PrismaClientKnownRequestError("Usuário inexistente", {
-            code: "P2025",
-            clientVersion: Prisma.prismaVersion.client
-        });
-        update.mockRejectedValue(error);
+        update.mockResolvedValue([]);
         const result = await updateUserRepository(7, user, "");
         expect(result).toBeNull();
     });

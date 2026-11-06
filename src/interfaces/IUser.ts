@@ -11,3 +11,11 @@ export interface IUser extends ICreateUser {
     id: number;
     ativo: boolean;
 }
+
+export interface IUserResponse {
+    id: number;
+    name: string;
+    email: string;
+    role: UserRole;
+    ativo: boolean;
+}

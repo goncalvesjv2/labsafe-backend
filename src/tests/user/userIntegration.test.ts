@@ -19,6 +19,7 @@ describe("Teste de integração de usuários", () => {
     const duplicateEmail = `duplicado.${randomUUID()}@example.com`;
     const invalidEmail = `invalido.${randomUUID()}`;
     const missingEmail = `inexistente.${randomUUID()}@example.com`;
+    const missingUpdateEmail = `atualizacao.inexistente.${randomUUID()}@example.com`;
     const password = "SenhaTeste123!";
 
     beforeAll(async () => {
@@ -48,7 +49,7 @@ describe("Teste de integração de usuários", () => {
 
     afterAll(async () => {
         try {
-            const emails = [adminEmail, email, listEmail, idEmail, updateEmail, deleteEmail, duplicateEmail, invalidEmail, missingEmail];
+            const emails = [adminEmail, email, listEmail, idEmail, updateEmail, deleteEmail, duplicateEmail, invalidEmail, missingEmail, missingUpdateEmail];
             await prisma.logs.deleteMany({ where: { usuario: { email: { in: emails } } } });
             await prisma.usuario.deleteMany({ where: { email: { in: emails } } });
         } finally {
@@ -308,5 +309,26 @@ describe("Teste de integração de usuários", () => {
         expect(response.statusCode).toBe(404);
         const body = response.json();
         expect(body.message).toBe("Usuário não encontrado");
+    }, 30000);
+
+    test("deve retornar erro ao atualizar um usuário inexistente sem registrar sucesso", async () => {
+        const user = await prisma.usuario.create({
+            data: { name: "Usuário temporário", email: missingUpdateEmail, senha: "hash-de-teste", role: user_role.Aluno_a_ }
+        });
+        await prisma.usuario.delete({ where: { id: user.id } });
+
+        const response = await app.inject({
+            method: "PATCH",
+            url: `/api/users/${user.id}`,
+            headers: { authorization: `Bearer ${token}` },
+            payload: { name: "Novo nome", email: missingUpdateEmail, role: UserRole.ALUNO }
+        });
+
+        expect(response.statusCode).toBe(400);
+        expect(response.json().message).toBe("Usuário não encontrado");
+        expect(await prisma.usuario.findUnique({ where: { id: user.id } })).toBeNull();
+        expect(await prisma.logs.count({
+            where: { user_id: adminId, action: "ALTERACAO_USUARIO", description: { contains: missingUpdateEmail } }
+        })).toBe(0);
     }, 30000);
 });
