@@ -1,10 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { loginService } from "../services/authService";
-
-interface ILogin {
-    email: string;
-    password: string;
-}
+import { ILogin } from "../interfaces/ILogin";
 
 export async function loginController(request: FastifyRequest, reply: FastifyReply) {
     try {
