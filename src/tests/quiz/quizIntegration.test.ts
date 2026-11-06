@@ -8,7 +8,6 @@ import { user_role } from "../../generated/prisma/enums";
 import { UserRole } from "../../utils/user";
 
 describe("Testes de integração do quiz", () => {
-    let baseUrl: string;
     let teacherId: number;
     let otherTeacherId: number;
     let studentId: number;
@@ -25,30 +24,15 @@ describe("Testes de integração do quiz", () => {
     const changedRoleEmail = `perfil.quiz.${randomUUID()}@example.com`;
     const deletedUserEmail = `excluido.quiz.${randomUUID()}@example.com`;
     const emails = [teacherEmail, otherTeacherEmail, studentEmail, adminEmail, changedRoleEmail, deletedUserEmail];
-    const endpoints = [
-        { method: "GET", path: "/api/quizzes" },
-        { method: "GET", path: "/api/quizzes/1" },
-        { method: "POST", path: "/api/quizzes", body: { contentId: 1 } },
-        { method: "PATCH", path: "/api/quizzes/1", body: { contentId: 1 } },
-        { method: "DELETE", path: "/api/quizzes/1" }
-    ];
-
-    async function request(method: string, path: string, token?: string, body?: unknown) {
-        const headers: Record<string, string> = {};
-        if (token) headers.Authorization = `Bearer ${token}`;
-        if (body !== undefined) headers["Content-Type"] = "application/json";
-
-        return fetch(`${baseUrl}${path}`, {
-            method,
-            headers,
-            body: body === undefined ? undefined : JSON.stringify(body)
-        });
-    }
 
     async function login(email: string) {
-        const response = await request("POST", "/auth/login", undefined, { email, password });
-        expect(response.status).toBe(200);
-        const body = await response.json();
+        const response = await app.inject({
+            method: "POST",
+            url: "/auth/login",
+            payload: { email, password }
+        });
+        expect(response.statusCode).toBe(200);
+        const body = response.json();
         expect(body.token).toEqual(expect.any(String));
         return body.token as string;
     }
@@ -77,7 +61,7 @@ describe("Testes de integração do quiz", () => {
 
     beforeAll(async () => {
         app.log.level = "silent";
-        baseUrl = await app.listen({ port: 0, host: "127.0.0.1" });
+        await app.ready();
         passwordHash = await bcrypt.hash(password, 10);
         const teacher = await prisma.usuario.create({
             data: { name: "Professor do Quiz", email: teacherEmail, senha: passwordHash, role: user_role.Professor_a_ }
@@ -113,9 +97,14 @@ describe("Testes de integração do quiz", () => {
 
     test("deve cadastrar um quiz em um conteúdo próprio e registrar o log", async () => {
         const content = await createContent();
-        const response = await request("POST", "/api/quizzes", teacherToken, { contentId: content.id, teacherId: otherTeacherId, id: 999 });
-        expect(response.status).toBe(201);
-        const body = await response.json();
+        const response = await app.inject({
+            method: "POST",
+            url: "/api/quizzes",
+            headers: { authorization: `Bearer ${teacherToken}` },
+            payload: { contentId: content.id, teacherId: otherTeacherId, id: 999 }
+        });
+        expect(response.statusCode).toBe(201);
+        const body = response.json();
         expect(body).toEqual({ id: expect.any(Number), contentId: content.id, teacherId });
         const savedQuiz = await prisma.quiz.findUniqueOrThrow({ where: { id: body.id } });
         expect(savedQuiz.conteudo_id).toBe(content.id);
@@ -129,9 +118,13 @@ describe("Testes de integração do quiz", () => {
     test("deve permitir que professor e aluno listem os quizzes", async () => {
         const { content, quiz } = await createQuizFixture();
         for (const token of [teacherToken, studentToken]) {
-            const response = await request("GET", "/api/quizzes", token);
-            expect(response.status).toBe(200);
-            const body = await response.json();
+            const response = await app.inject({
+                method: "GET",
+                url: "/api/quizzes",
+                headers: { authorization: `Bearer ${token}` }
+            });
+            expect(response.statusCode).toBe(200);
+            const body = response.json();
             expect(body).toContainEqual({ id: quiz.id, contentId: content.id, teacherId });
         }
     }, 30000);
@@ -139,18 +132,27 @@ describe("Testes de integração do quiz", () => {
     test("deve permitir que professor e aluno consultem um quiz pelo ID", async () => {
         const { content, quiz } = await createQuizFixture();
         for (const token of [teacherToken, studentToken]) {
-            const response = await request("GET", `/api/quizzes/${quiz.id}`, token);
-            expect(response.status).toBe(200);
-            expect(await response.json()).toEqual({ id: quiz.id, contentId: content.id, teacherId });
+            const response = await app.inject({
+                method: "GET",
+                url: `/api/quizzes/${quiz.id}`,
+                headers: { authorization: `Bearer ${token}` }
+            });
+            expect(response.statusCode).toBe(200);
+            expect(response.json()).toEqual({ id: quiz.id, contentId: content.id, teacherId });
         }
     }, 30000);
 
     test("deve trocar o conteúdo do quiz mantendo seu ID e registrar o log", async () => {
         const { content, quiz } = await createQuizFixture();
         const targetContent = await createContent();
-        const response = await request("PATCH", `/api/quizzes/${quiz.id}`, teacherToken, { contentId: targetContent.id, teacherId: otherTeacherId });
-        expect(response.status).toBe(200);
-        expect(await response.json()).toEqual({ id: quiz.id, contentId: targetContent.id, teacherId });
+        const response = await app.inject({
+            method: "PATCH",
+            url: `/api/quizzes/${quiz.id}`,
+            headers: { authorization: `Bearer ${teacherToken}` },
+            payload: { contentId: targetContent.id, teacherId: otherTeacherId }
+        });
+        expect(response.statusCode).toBe(200);
+        expect(response.json()).toEqual({ id: quiz.id, contentId: targetContent.id, teacherId });
         const savedQuiz = await prisma.quiz.findUniqueOrThrow({ where: { id: quiz.id } });
         expect(savedQuiz.conteudo_id).toBe(targetContent.id);
         expect(savedQuiz.professor_id).toBe(teacherId);
@@ -163,17 +165,26 @@ describe("Testes de integração do quiz", () => {
 
     test("deve permitir manter o conteúdo atual sem criar outro quiz", async () => {
         const { content, quiz } = await createQuizFixture();
-        const response = await request("PATCH", `/api/quizzes/${quiz.id}`, teacherToken, { contentId: content.id });
-        expect(response.status).toBe(200);
-        expect(await response.json()).toEqual({ id: quiz.id, contentId: content.id, teacherId });
+        const response = await app.inject({
+            method: "PATCH",
+            url: `/api/quizzes/${quiz.id}`,
+            headers: { authorization: `Bearer ${teacherToken}` },
+            payload: { contentId: content.id }
+        });
+        expect(response.statusCode).toBe(200);
+        expect(response.json()).toEqual({ id: quiz.id, contentId: content.id, teacherId });
         expect(await prisma.quiz.count({ where: { conteudo_id: content.id } })).toBe(1);
     }, 30000);
 
     test("deve excluir o quiz, preservar o conteúdo e registrar o log", async () => {
         const { content, quiz } = await createQuizFixture();
-        const response = await request("DELETE", `/api/quizzes/${quiz.id}`, teacherToken);
-        expect(response.status).toBe(204);
-        expect(await response.text()).toBe("");
+        const response = await app.inject({
+            method: "DELETE",
+            url: `/api/quizzes/${quiz.id}`,
+            headers: { authorization: `Bearer ${teacherToken}` }
+        });
+        expect(response.statusCode).toBe(204);
+        expect(response.body).toBe("");
         expect(await prisma.quiz.findUnique({ where: { id: quiz.id } })).toBeNull();
         expect(await prisma.conteudo.findUnique({ where: { id: content.id } })).not.toBeNull();
         const logs = await prisma.logs.findMany({
@@ -184,38 +195,151 @@ describe("Testes de integração do quiz", () => {
 
     test("deve rejeitar todas as rotas sem token", async () => {
         const totalBefore = await countQuizzes();
-        for (const endpoint of endpoints) {
-            const response = await request(endpoint.method, endpoint.path, undefined, endpoint.body);
-            expect(response.status).toBe(401);
-        }
+        const listResponse = await app.inject({
+            method: "GET",
+            url: "/api/quizzes"
+        });
+        expect(listResponse.statusCode).toBe(401);
+        const byIdResponse = await app.inject({
+            method: "GET",
+            url: "/api/quizzes/1"
+        });
+        expect(byIdResponse.statusCode).toBe(401);
+        const postResponse = await app.inject({
+            method: "POST",
+            url: "/api/quizzes",
+            payload: { contentId: 1 }
+        });
+        expect(postResponse.statusCode).toBe(401);
+        const patchResponse = await app.inject({
+            method: "PATCH",
+            url: "/api/quizzes/1",
+            payload: { contentId: 1 }
+        });
+        expect(patchResponse.statusCode).toBe(401);
+        const removeResponse = await app.inject({
+            method: "DELETE",
+            url: "/api/quizzes/1"
+        });
+        expect(removeResponse.statusCode).toBe(401);
         expect(await countQuizzes()).toBe(totalBefore);
     }, 30000);
 
     test("deve rejeitar um token inválido em todas as rotas", async () => {
-        for (const endpoint of endpoints) {
-            const response = await request(endpoint.method, endpoint.path, "token-invalido", endpoint.body);
-            expect(response.status).toBe(401);
-        }
+        const listResponse = await app.inject({
+            method: "GET",
+            url: "/api/quizzes",
+            headers: { authorization: "Bearer token-invalido" }
+        });
+        expect(listResponse.statusCode).toBe(401);
+        const byIdResponse = await app.inject({
+            method: "GET",
+            url: "/api/quizzes/1",
+            headers: { authorization: "Bearer token-invalido" }
+        });
+        expect(byIdResponse.statusCode).toBe(401);
+        const postResponse = await app.inject({
+            method: "POST",
+            url: "/api/quizzes",
+            headers: { authorization: "Bearer token-invalido" },
+            payload: { contentId: 1 }
+        });
+        expect(postResponse.statusCode).toBe(401);
+        const patchResponse = await app.inject({
+            method: "PATCH",
+            url: "/api/quizzes/1",
+            headers: { authorization: "Bearer token-invalido" },
+            payload: { contentId: 1 }
+        });
+        expect(patchResponse.statusCode).toBe(401);
+        const removeResponse = await app.inject({
+            method: "DELETE",
+            url: "/api/quizzes/1",
+            headers: { authorization: "Bearer token-invalido" }
+        });
+        expect(removeResponse.statusCode).toBe(401);
     }, 30000);
 
     test("deve rejeitar um token expirado em todas as rotas", async () => {
         const expiredToken = app.jwt.sign({ sub: teacherId, role: UserRole.PROFESSOR }, { expiresIn: -1 });
-        for (const endpoint of endpoints) {
-            const response = await request(endpoint.method, endpoint.path, expiredToken, endpoint.body);
-            expect(response.status).toBe(401);
-        }
+        const listResponse = await app.inject({
+            method: "GET",
+            url: "/api/quizzes",
+            headers: { authorization: `Bearer ${expiredToken}` }
+        });
+        expect(listResponse.statusCode).toBe(401);
+        const byIdResponse = await app.inject({
+            method: "GET",
+            url: "/api/quizzes/1",
+            headers: { authorization: `Bearer ${expiredToken}` }
+        });
+        expect(byIdResponse.statusCode).toBe(401);
+        const postResponse = await app.inject({
+            method: "POST",
+            url: "/api/quizzes",
+            headers: { authorization: `Bearer ${expiredToken}` },
+            payload: { contentId: 1 }
+        });
+        expect(postResponse.statusCode).toBe(401);
+        const patchResponse = await app.inject({
+            method: "PATCH",
+            url: "/api/quizzes/1",
+            headers: { authorization: `Bearer ${expiredToken}` },
+            payload: { contentId: 1 }
+        });
+        expect(patchResponse.statusCode).toBe(401);
+        const removeResponse = await app.inject({
+            method: "DELETE",
+            url: "/api/quizzes/1",
+            headers: { authorization: `Bearer ${expiredToken}` }
+        });
+        expect(removeResponse.statusCode).toBe(401);
     }, 30000);
 
     test("deve bloquear o administrador em todas as rotas e registrar as tentativas", async () => {
         const totalBefore = await countQuizzes();
-        for (const endpoint of endpoints) {
-            const response = await request(endpoint.method, endpoint.path, adminToken, endpoint.body);
-            expect(response.status).toBe(403);
-            const body = await response.json();
-            expect(body.message).toBe(endpoint.method === "GET"
-                ? "Somente professores e alunos podem acessar os quizzes"
-                : "Somente professores podem executar esta ação");
-        }
+        const listResponse = await app.inject({
+            method: "GET",
+            url: "/api/quizzes",
+            headers: { authorization: `Bearer ${adminToken}` }
+        });
+        expect(listResponse.statusCode).toBe(403);
+        const listBody = listResponse.json();
+        expect(listBody.message).toBe("Somente professores e alunos podem acessar os quizzes");
+        const byIdResponse = await app.inject({
+            method: "GET",
+            url: "/api/quizzes/1",
+            headers: { authorization: `Bearer ${adminToken}` }
+        });
+        expect(byIdResponse.statusCode).toBe(403);
+        const byIdBody = byIdResponse.json();
+        expect(byIdBody.message).toBe("Somente professores e alunos podem acessar os quizzes");
+        const postResponse = await app.inject({
+            method: "POST",
+            url: "/api/quizzes",
+            headers: { authorization: `Bearer ${adminToken}` },
+            payload: { contentId: 1 }
+        });
+        expect(postResponse.statusCode).toBe(403);
+        const postBody = postResponse.json();
+        expect(postBody.message).toBe("Somente professores podem executar esta ação");
+        const patchResponse = await app.inject({
+            method: "PATCH",
+            url: "/api/quizzes/1",
+            headers: { authorization: `Bearer ${adminToken}` },
+            payload: { contentId: 1 }
+        });
+        expect(patchResponse.statusCode).toBe(403);
+        const patchBody = patchResponse.json();
+        expect(patchBody.message).toBe("Somente professores podem executar esta ação");
+        const removeResponse = await app.inject({
+            method: "DELETE",
+            url: "/api/quizzes/1",
+            headers: { authorization: `Bearer ${adminToken}` }
+        });
+        expect(removeResponse.statusCode).toBe(403);
+        const removeBody = removeResponse.json();
+        expect(removeBody.message).toBe("Somente professores podem executar esta ação");
         expect(await countQuizzes()).toBe(totalBefore);
         const logs = await prisma.logs.findMany({ where: { user_id: adminId, action: "FALHA_AUTORIZACAO" } });
         expect(logs).toHaveLength(5);
@@ -225,12 +349,26 @@ describe("Testes de integração do quiz", () => {
         const { quiz } = await createQuizFixture();
         const targetContent = await createContent();
         const totalBefore = await countQuizzes();
-        const post = await request("POST", "/api/quizzes", studentToken, { contentId: targetContent.id });
-        const patch = await request("PATCH", `/api/quizzes/${quiz.id}`, studentToken, { contentId: targetContent.id });
-        const remove = await request("DELETE", `/api/quizzes/${quiz.id}`, studentToken);
-        expect(post.status).toBe(403);
-        expect(patch.status).toBe(403);
-        expect(remove.status).toBe(403);
+        const post = await app.inject({
+            method: "POST",
+            url: "/api/quizzes",
+            headers: { authorization: `Bearer ${studentToken}` },
+            payload: { contentId: targetContent.id }
+        });
+        const patch = await app.inject({
+            method: "PATCH",
+            url: `/api/quizzes/${quiz.id}`,
+            headers: { authorization: `Bearer ${studentToken}` },
+            payload: { contentId: targetContent.id }
+        });
+        const remove = await app.inject({
+            method: "DELETE",
+            url: `/api/quizzes/${quiz.id}`,
+            headers: { authorization: `Bearer ${studentToken}` }
+        });
+        expect(post.statusCode).toBe(403);
+        expect(patch.statusCode).toBe(403);
+        expect(remove.statusCode).toBe(403);
         expect(await countQuizzes()).toBe(totalBefore);
         expect(await prisma.quiz.findUnique({ where: { id: quiz.id } })).toEqual(quiz);
         expect(await prisma.quiz.findUnique({ where: { conteudo_id: targetContent.id } })).toBeNull();
@@ -244,11 +382,43 @@ describe("Testes de integração do quiz", () => {
         const oldToken = await login(deletedUserEmail);
         await prisma.logs.deleteMany({ where: { user_id: user.id } });
         await prisma.usuario.delete({ where: { id: user.id } });
-        for (const endpoint of endpoints) {
-            const response = await request(endpoint.method, endpoint.path, oldToken, endpoint.body);
-            expect(response.status).toBe(401);
-            expect((await response.json()).message).toBe("Usuário não encontrado");
-        }
+        const listResponse = await app.inject({
+            method: "GET",
+            url: "/api/quizzes",
+            headers: { authorization: `Bearer ${oldToken}` }
+        });
+        expect(listResponse.statusCode).toBe(401);
+        expect(listResponse.json().message).toBe("Usuário não encontrado");
+        const byIdResponse = await app.inject({
+            method: "GET",
+            url: "/api/quizzes/1",
+            headers: { authorization: `Bearer ${oldToken}` }
+        });
+        expect(byIdResponse.statusCode).toBe(401);
+        expect(byIdResponse.json().message).toBe("Usuário não encontrado");
+        const postResponse = await app.inject({
+            method: "POST",
+            url: "/api/quizzes",
+            headers: { authorization: `Bearer ${oldToken}` },
+            payload: { contentId: 1 }
+        });
+        expect(postResponse.statusCode).toBe(401);
+        expect(postResponse.json().message).toBe("Usuário não encontrado");
+        const patchResponse = await app.inject({
+            method: "PATCH",
+            url: "/api/quizzes/1",
+            headers: { authorization: `Bearer ${oldToken}` },
+            payload: { contentId: 1 }
+        });
+        expect(patchResponse.statusCode).toBe(401);
+        expect(patchResponse.json().message).toBe("Usuário não encontrado");
+        const removeResponse = await app.inject({
+            method: "DELETE",
+            url: "/api/quizzes/1",
+            headers: { authorization: `Bearer ${oldToken}` }
+        });
+        expect(removeResponse.statusCode).toBe(401);
+        expect(removeResponse.json().message).toBe("Usuário não encontrado");
     }, 30000);
 
     test("deve bloquear o token antigo de aluno após mudança para administrador", async () => {
@@ -257,20 +427,64 @@ describe("Testes de integração do quiz", () => {
         });
         const oldToken = await login(changedRoleEmail);
         await prisma.usuario.update({ where: { id: user.id }, data: { role: user_role.Admin } });
-        for (const endpoint of endpoints) {
-            const response = await request(endpoint.method, endpoint.path, oldToken, endpoint.body);
-            expect(response.status).toBe(403);
-        }
+        const listResponse = await app.inject({
+            method: "GET",
+            url: "/api/quizzes",
+            headers: { authorization: `Bearer ${oldToken}` }
+        });
+        expect(listResponse.statusCode).toBe(403);
+        const byIdResponse = await app.inject({
+            method: "GET",
+            url: "/api/quizzes/1",
+            headers: { authorization: `Bearer ${oldToken}` }
+        });
+        expect(byIdResponse.statusCode).toBe(403);
+        const postResponse = await app.inject({
+            method: "POST",
+            url: "/api/quizzes",
+            headers: { authorization: `Bearer ${oldToken}` },
+            payload: { contentId: 1 }
+        });
+        expect(postResponse.statusCode).toBe(403);
+        const patchResponse = await app.inject({
+            method: "PATCH",
+            url: "/api/quizzes/1",
+            headers: { authorization: `Bearer ${oldToken}` },
+            payload: { contentId: 1 }
+        });
+        expect(patchResponse.statusCode).toBe(403);
+        const removeResponse = await app.inject({
+            method: "DELETE",
+            url: "/api/quizzes/1",
+            headers: { authorization: `Bearer ${oldToken}` }
+        });
+        expect(removeResponse.statusCode).toBe(403);
     }, 30000);
 
     test("deve rejeitar IDs inválidos na consulta, edição e exclusão", async () => {
         const totalBefore = await countQuizzes();
         for (const id of ["0", "-1", "1.5", "abc", "Infinity"]) {
-            for (const method of ["GET", "PATCH", "DELETE"]) {
-                const response = await request(method, `/api/quizzes/${id}`, teacherToken);
-                expect(response.status).toBe(400);
-                expect(await response.json()).toEqual({ message: "ID inválido" });
-            }
+            const getResponse = await app.inject({
+                method: "GET",
+                url: `/api/quizzes/${id}`,
+                headers: { authorization: `Bearer ${teacherToken}` }
+            });
+            expect(getResponse.statusCode).toBe(400);
+            expect(getResponse.json()).toEqual({ message: "ID inválido" });
+            const patchResponse = await app.inject({
+                method: "PATCH",
+                url: `/api/quizzes/${id}`,
+                headers: { authorization: `Bearer ${teacherToken}` }
+            });
+            expect(patchResponse.statusCode).toBe(400);
+            expect(patchResponse.json()).toEqual({ message: "ID inválido" });
+            const removeResponse = await app.inject({
+                method: "DELETE",
+                url: `/api/quizzes/${id}`,
+                headers: { authorization: `Bearer ${teacherToken}` }
+            });
+            expect(removeResponse.statusCode).toBe(400);
+            expect(removeResponse.json()).toEqual({ message: "ID inválido" });
         }
         expect(await countQuizzes()).toBe(totalBefore);
     }, 30000);
@@ -281,12 +495,22 @@ describe("Testes de integração do quiz", () => {
         const invalidBodies = [{}, { contentId: null }, { contentId: "1" }, { contentId: true },
             { contentId: 0 }, { contentId: -1 }, { contentId: 1.5 }];
         for (const body of invalidBodies) {
-            const post = await request("POST", "/api/quizzes", teacherToken, body);
-            const patch = await request("PATCH", `/api/quizzes/${quiz.id}`, teacherToken, body);
-            expect(post.status).toBe(400);
-            expect(patch.status).toBe(400);
-            expect((await post.json()).message).toBe("Dados inválidos");
-            expect((await patch.json()).message).toBe("Dados inválidos");
+            const post = await app.inject({
+                method: "POST",
+                url: "/api/quizzes",
+                headers: { authorization: `Bearer ${teacherToken}` },
+                payload: body
+            });
+            const patch = await app.inject({
+                method: "PATCH",
+                url: `/api/quizzes/${quiz.id}`,
+                headers: { authorization: `Bearer ${teacherToken}` },
+                payload: body
+            });
+            expect(post.statusCode).toBe(400);
+            expect(patch.statusCode).toBe(400);
+            expect(post.json().message).toBe("Dados inválidos");
+            expect(patch.json().message).toBe("Dados inválidos");
         }
         expect(await countQuizzes()).toBe(totalBefore);
         expect(await prisma.quiz.findUnique({ where: { id: quiz.id } })).toEqual(quiz);
@@ -297,51 +521,85 @@ describe("Testes de integração do quiz", () => {
         await prisma.conteudo.delete({ where: { id: missingContent.id } });
         const { quiz } = await createQuizFixture();
         const totalBefore = await countQuizzes();
-        const post = await request("POST", "/api/quizzes", teacherToken, { contentId: missingContent.id });
-        const patch = await request("PATCH", `/api/quizzes/${quiz.id}`, teacherToken, { contentId: missingContent.id });
-        expect(post.status).toBe(400);
-        expect(patch.status).toBe(400);
-        expect((await post.json()).message).toBe("Conteúdo não encontrado");
-        expect((await patch.json()).message).toBe("Conteúdo não encontrado");
+        const post = await app.inject({
+            method: "POST",
+            url: "/api/quizzes",
+            headers: { authorization: `Bearer ${teacherToken}` },
+            payload: { contentId: missingContent.id }
+        });
+        const patch = await app.inject({
+            method: "PATCH",
+            url: `/api/quizzes/${quiz.id}`,
+            headers: { authorization: `Bearer ${teacherToken}` },
+            payload: { contentId: missingContent.id }
+        });
+        expect(post.statusCode).toBe(400);
+        expect(patch.statusCode).toBe(400);
+        expect(post.json().message).toBe("Conteúdo não encontrado");
+        expect(patch.json().message).toBe("Conteúdo não encontrado");
         expect(await countQuizzes()).toBe(totalBefore);
         expect(await prisma.quiz.findUnique({ where: { id: quiz.id } })).toEqual(quiz);
     }, 30000);
 
     test("deve impedir um segundo quiz para o mesmo conteúdo", async () => {
         const { content, quiz } = await createQuizFixture();
-        const response = await request("POST", "/api/quizzes", teacherToken, { contentId: content.id });
-        expect(response.status).toBe(400);
-        expect((await response.json()).message).toBe("Este conteúdo já possui um quiz");
+        const response = await app.inject({
+            method: "POST",
+            url: "/api/quizzes",
+            headers: { authorization: `Bearer ${teacherToken}` },
+            payload: { contentId: content.id }
+        });
+        expect(response.statusCode).toBe(400);
+        expect(response.json().message).toBe("Este conteúdo já possui um quiz");
         expect(await prisma.quiz.findMany({ where: { conteudo_id: content.id } })).toEqual([quiz]);
     }, 30000);
 
     test("deve impedir a troca para um conteúdo que já possui outro quiz", async () => {
         const original = await createQuizFixture();
         const target = await createQuizFixture();
-        const response = await request("PATCH", `/api/quizzes/${original.quiz.id}`, teacherToken, { contentId: target.content.id });
-        expect(response.status).toBe(400);
-        expect((await response.json()).message).toBe("Este conteúdo já possui um quiz");
+        const response = await app.inject({
+            method: "PATCH",
+            url: `/api/quizzes/${original.quiz.id}`,
+            headers: { authorization: `Bearer ${teacherToken}` },
+            payload: { contentId: target.content.id }
+        });
+        expect(response.statusCode).toBe(400);
+        expect(response.json().message).toBe("Este conteúdo já possui um quiz");
         expect(await prisma.quiz.findUnique({ where: { id: original.quiz.id } })).toEqual(original.quiz);
         expect(await prisma.quiz.findUnique({ where: { id: target.quiz.id } })).toEqual(target.quiz);
     }, 30000);
 
     test("deve impedir o cadastro em conteúdo de outro professor", async () => {
         const content = await createContent(otherTeacherId);
-        const response = await request("POST", "/api/quizzes", teacherToken, { contentId: content.id });
-        expect(response.status).toBe(400);
-        expect((await response.json()).message).toBe("Você pode somente criar quizzes para seus próprios conteúdos");
+        const response = await app.inject({
+            method: "POST",
+            url: "/api/quizzes",
+            headers: { authorization: `Bearer ${teacherToken}` },
+            payload: { contentId: content.id }
+        });
+        expect(response.statusCode).toBe(400);
+        expect(response.json().message).toBe("Você pode somente criar quizzes para seus próprios conteúdos");
         expect(await prisma.quiz.findUnique({ where: { conteudo_id: content.id } })).toBeNull();
     }, 30000);
 
     test("deve impedir a edição e a exclusão do quiz de outro professor", async () => {
         const { quiz } = await createQuizFixture(otherTeacherId);
         const targetContent = await createContent();
-        const patch = await request("PATCH", `/api/quizzes/${quiz.id}`, teacherToken, { contentId: targetContent.id });
-        const remove = await request("DELETE", `/api/quizzes/${quiz.id}`, teacherToken);
-        expect(patch.status).toBe(400);
-        expect((await patch.json()).message).toBe("Você pode somente atualizar seus próprios quizzes");
-        expect(remove.status).toBe(500);
-        expect((await remove.json()).message).toBe("Você só pode excluir seus próprios quizzes");
+        const patch = await app.inject({
+            method: "PATCH",
+            url: `/api/quizzes/${quiz.id}`,
+            headers: { authorization: `Bearer ${teacherToken}` },
+            payload: { contentId: targetContent.id }
+        });
+        const remove = await app.inject({
+            method: "DELETE",
+            url: `/api/quizzes/${quiz.id}`,
+            headers: { authorization: `Bearer ${teacherToken}` }
+        });
+        expect(patch.statusCode).toBe(400);
+        expect(patch.json().message).toBe("Você pode somente atualizar seus próprios quizzes");
+        expect(remove.statusCode).toBe(500);
+        expect(remove.json().message).toBe("Você só pode excluir seus próprios quizzes");
         expect(await prisma.quiz.findUnique({ where: { id: quiz.id } })).toEqual(quiz);
         expect(await prisma.quiz.findUnique({ where: { conteudo_id: targetContent.id } })).toBeNull();
     }, 30000);
@@ -349,9 +607,14 @@ describe("Testes de integração do quiz", () => {
     test("deve impedir mover o próprio quiz para conteúdo de outro professor", async () => {
         const { quiz } = await createQuizFixture();
         const targetContent = await createContent(otherTeacherId);
-        const response = await request("PATCH", `/api/quizzes/${quiz.id}`, teacherToken, { contentId: targetContent.id });
-        expect(response.status).toBe(400);
-        expect((await response.json()).message).toBe("Você pode somente vincular quizzes aos seus próprios conteúdos");
+        const response = await app.inject({
+            method: "PATCH",
+            url: `/api/quizzes/${quiz.id}`,
+            headers: { authorization: `Bearer ${teacherToken}` },
+            payload: { contentId: targetContent.id }
+        });
+        expect(response.statusCode).toBe(400);
+        expect(response.json().message).toBe("Você pode somente vincular quizzes aos seus próprios conteúdos");
         expect(await prisma.quiz.findUnique({ where: { id: quiz.id } })).toEqual(quiz);
         expect(await prisma.quiz.findUnique({ where: { conteudo_id: targetContent.id } })).toBeNull();
     }, 30000);
@@ -363,28 +626,50 @@ describe("Testes de integração do quiz", () => {
             data: { professor_id: otherTeacherId }
         });
 
-        const patch = await request("PATCH", `/api/quizzes/${quiz.id}`, teacherToken, { contentId: content.id });
-        const remove = await request("DELETE", `/api/quizzes/${quiz.id}`, teacherToken);
+        const patch = await app.inject({
+            method: "PATCH",
+            url: `/api/quizzes/${quiz.id}`,
+            headers: { authorization: `Bearer ${teacherToken}` },
+            payload: { contentId: content.id }
+        });
+        const remove = await app.inject({
+            method: "DELETE",
+            url: `/api/quizzes/${quiz.id}`,
+            headers: { authorization: `Bearer ${teacherToken}` }
+        });
 
-        expect(patch.status).toBe(400);
-        expect((await patch.json()).message).toBe("Você pode somente atualizar seus próprios quizzes");
-        expect(remove.status).toBe(500);
-        expect((await remove.json()).message).toBe("Você só pode excluir seus próprios quizzes");
+        expect(patch.statusCode).toBe(400);
+        expect(patch.json().message).toBe("Você pode somente atualizar seus próprios quizzes");
+        expect(remove.statusCode).toBe(500);
+        expect(remove.json().message).toBe("Você só pode excluir seus próprios quizzes");
         expect(await prisma.quiz.findUnique({ where: { id: quiz.id } })).toEqual(savedQuiz);
     }, 30000);
 
     test("deve tratar consulta, edição e exclusão de um quiz inexistente", async () => {
         const { quiz, content } = await createQuizFixture();
         await prisma.quiz.delete({ where: { id: quiz.id } });
-        const get = await request("GET", `/api/quizzes/${quiz.id}`, teacherToken);
-        const patch = await request("PATCH", `/api/quizzes/${quiz.id}`, teacherToken, { contentId: content.id });
-        const remove = await request("DELETE", `/api/quizzes/${quiz.id}`, teacherToken);
-        expect(get.status).toBe(404);
-        expect(patch.status).toBe(400);
-        expect(remove.status).toBe(500);
-        expect((await get.json()).message).toBe("Quiz não encontrado");
-        expect((await patch.json()).message).toBe("Quiz não encontrado");
-        expect((await remove.json()).message).toBe("Quiz não encontrado");
+        const get = await app.inject({
+            method: "GET",
+            url: `/api/quizzes/${quiz.id}`,
+            headers: { authorization: `Bearer ${teacherToken}` }
+        });
+        const patch = await app.inject({
+            method: "PATCH",
+            url: `/api/quizzes/${quiz.id}`,
+            headers: { authorization: `Bearer ${teacherToken}` },
+            payload: { contentId: content.id }
+        });
+        const remove = await app.inject({
+            method: "DELETE",
+            url: `/api/quizzes/${quiz.id}`,
+            headers: { authorization: `Bearer ${teacherToken}` }
+        });
+        expect(get.statusCode).toBe(404);
+        expect(patch.statusCode).toBe(400);
+        expect(remove.statusCode).toBe(500);
+        expect(get.json().message).toBe("Quiz não encontrado");
+        expect(patch.json().message).toBe("Quiz não encontrado");
+        expect(remove.json().message).toBe("Quiz não encontrado");
         expect(await prisma.quiz.findUnique({ where: { conteudo_id: content.id } })).toBeNull();
     }, 30000);
 });

@@ -7,7 +7,6 @@ import { user_role } from "../../generated/prisma/enums";
 import { UserRole } from "../../utils/user";
 
 describe("Testes de integração do PubChem", () => {
-    let baseUrl: string;
     let studentToken: string;
     let studentId: number;
     const testId = Date.now();
@@ -19,7 +18,7 @@ describe("Testes de integração do PubChem", () => {
     const password = "SenhaTeste123!";
 
     beforeAll(async () => {
-        baseUrl = await app.listen({ port: 0, host: "127.0.0.1" });
+        await app.ready();
         const student = await prisma.usuario.create({
             data: {
                 name: "Aluno Teste PubChem",
@@ -29,13 +28,14 @@ describe("Testes de integração do PubChem", () => {
             }
         });
         studentId = student.id;
-        const login = await fetch(`${baseUrl}/auth/login`, {
+        const login = await app.inject({
             method: "POST",
+            url: "/auth/login",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: studentEmail, password })
+            payload: { email: studentEmail, password }
         });
-        expect(login.status).toBe(200);
-        const loginBody = await login.json();
+        expect(login.statusCode).toBe(200);
+        const loginBody = login.json();
         expect(loginBody.token).toEqual(expect.any(String));
         studentToken = loginBody.token;
     }, 30000);
@@ -52,13 +52,14 @@ describe("Testes de integração do PubChem", () => {
     }, 30000);
 
     test("deve permitir que um aluno autenticado consulte um composto no PubChem", async () => {
-        const response = await fetch(`${baseUrl}/api/compounds/Water`, {
+        const response = await app.inject({
             method: "GET",
+            url: "/api/compounds/Water",
             headers: { Authorization: `Bearer ${studentToken}` }
         });
-        expect(response.status).toBe(200);
-        expect(response.headers.get("content-type")).toContain("application/json");
-        const body = await response.json();
+        expect(response.statusCode).toBe(200);
+        expect(response.headers["content-type"]).toContain("application/json");
+        const body = response.json();
         expect(body.cid).toBe(962);
         expect(body.title).toEqual(expect.any(String));
         expect(body.molecularFormula).toBe("H2O");
@@ -74,21 +75,23 @@ describe("Testes de integração do PubChem", () => {
                 role: user_role.Admin
             }
         });
-        const login = await fetch(`${baseUrl}/auth/login`, {
+        const login = await app.inject({
             method: "POST",
+            url: "/auth/login",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: adminEmail, password })
+            payload: { email: adminEmail, password }
         });
-        expect(login.status).toBe(200);
-        const loginBody = await login.json();
+        expect(login.statusCode).toBe(200);
+        const loginBody = login.json();
         expect(loginBody.token).toEqual(expect.any(String));
         const adminToken = loginBody.token;
-        const response = await fetch(`${baseUrl}/api/compounds/Water`, {
+        const response = await app.inject({
             method: "GET",
+            url: "/api/compounds/Water",
             headers: { Authorization: `Bearer ${adminToken}` }
         });
-        expect(response.status).toBe(403);
-        const body = await response.json();
+        expect(response.statusCode).toBe(403);
+        const body = response.json();
         expect(body.message).toBe("Somente alunos podem executar esta ação");
         const logs = await prisma.logs.findMany({
             where: { user_id: admin.id, action: "FALHA_AUTORIZACAO" }
@@ -107,21 +110,23 @@ describe("Testes de integração do PubChem", () => {
             }
         });
 
-        const login = await fetch(`${baseUrl}/auth/login`, {
+        const login = await app.inject({
             method: "POST",
+            url: "/auth/login",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: teacherEmail, password })
+            payload: { email: teacherEmail, password }
         });
-        expect(login.status).toBe(200);
-        const loginBody = await login.json();
+        expect(login.statusCode).toBe(200);
+        const loginBody = login.json();
         expect(loginBody.token).toEqual(expect.any(String));
         const teacherToken = loginBody.token;
-        const response = await fetch(`${baseUrl}/api/compounds/Water`, {
+        const response = await app.inject({
             method: "GET",
+            url: "/api/compounds/Water",
             headers: { Authorization: `Bearer ${teacherToken}` }
         });
-        expect(response.status).toBe(403);
-        const body = await response.json();
+        expect(response.statusCode).toBe(403);
+        const body = response.json();
         expect(body.message).toBe("Somente alunos podem executar esta ação");
         const logs = await prisma.logs.findMany({
             where: { user_id: teacher.id, action: "FALHA_AUTORIZACAO" }
@@ -131,21 +136,23 @@ describe("Testes de integração do PubChem", () => {
     }, 30000);
 
     test("deve rejeitar uma consulta sem token", async () => {
-        const response = await fetch(`${baseUrl}/api/compounds/Water`, {
-            method: "GET"
+        const response = await app.inject({
+            method: "GET",
+            url: "/api/compounds/Water"
         });
-        expect(response.status).toBe(401);
-        const body = await response.json();
+        expect(response.statusCode).toBe(401);
+        const body = response.json();
         expect(body.code).toBe("FST_JWT_NO_AUTHORIZATION_IN_HEADER");
     }, 30000);
 
     test("deve rejeitar uma consulta com token inválido", async () => {
-        const response = await fetch(`${baseUrl}/api/compounds/Water`, {
+        const response = await app.inject({
             method: "GET",
+            url: "/api/compounds/Water",
             headers: { Authorization: "Bearer token-invalido" }
         });
-        expect(response.status).toBe(401);
-        const body = await response.json();
+        expect(response.statusCode).toBe(401);
+        const body = response.json();
         expect(body.code).toBe("FST_JWT_AUTHORIZATION_TOKEN_INVALID");
     }, 30000);
 
@@ -154,23 +161,25 @@ describe("Testes de integração do PubChem", () => {
             sub: studentId,
             role: UserRole.ALUNO
         }, { expiresIn: -1 });
-        const response = await fetch(`${baseUrl}/api/compounds/Water`, {
+        const response = await app.inject({
             method: "GET",
+            url: "/api/compounds/Water",
             headers: { Authorization: `Bearer ${expiredToken}` }
         });
-        expect(response.status).toBe(401);
-        const body = await response.json();
+        expect(response.statusCode).toBe(401);
+        const body = response.json();
         expect(body.code).toBe("FST_JWT_AUTHORIZATION_TOKEN_EXPIRED");
     }, 30000);
 
     test("deve retornar 404 quando o aluno consultar um composto inexistente", async () => {
         const compoundName = `composto-inexistente-${testId}`;
-        const response = await fetch(`${baseUrl}/api/compounds/${compoundName}`, {
+        const response = await app.inject({
             method: "GET",
+            url: `/api/compounds/${compoundName}`,
             headers: { Authorization: `Bearer ${studentToken}` }
         });
-        expect(response.status).toBe(404);
-        const body = await response.json();
+        expect(response.statusCode).toBe(404);
+        const body = response.json();
         expect(body.message).toBe("Composto não encontrado no PubChem");
     }, 30000);
 
@@ -183,25 +192,27 @@ describe("Testes de integração do PubChem", () => {
                 role: user_role.Aluno_a_
             }
         });
-        const login = await fetch(`${baseUrl}/auth/login`, {
+        const login = await app.inject({
             method: "POST",
+            url: "/auth/login",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: changedRoleEmail, password })
+            payload: { email: changedRoleEmail, password }
         });
-        expect(login.status).toBe(200);
-        const loginBody = await login.json();
+        expect(login.statusCode).toBe(200);
+        const loginBody = login.json();
         expect(loginBody.token).toEqual(expect.any(String));
         const oldToken = loginBody.token;
         await prisma.usuario.update({
             where: { id: student.id },
             data: { role: user_role.Professor_a_ }
         });
-        const response = await fetch(`${baseUrl}/api/compounds/Water`, {
+        const response = await app.inject({
             method: "GET",
+            url: "/api/compounds/Water",
             headers: { Authorization: `Bearer ${oldToken}` }
         });
-        expect(response.status).toBe(403);
-        const body = await response.json();
+        expect(response.statusCode).toBe(403);
+        const body = response.json();
         expect(body.message).toBe("Somente alunos podem executar esta ação");
     }, 30000);
 
@@ -214,23 +225,25 @@ describe("Testes de integração do PubChem", () => {
                 role: user_role.Aluno_a_
             }
         });
-        const login = await fetch(`${baseUrl}/auth/login`, {
+        const login = await app.inject({
             method: "POST",
+            url: "/auth/login",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: deletedEmail, password })
+            payload: { email: deletedEmail, password }
         });
-        expect(login.status).toBe(200);
-        const loginBody = await login.json();
+        expect(login.statusCode).toBe(200);
+        const loginBody = login.json();
         expect(loginBody.token).toEqual(expect.any(String));
         const deletedUserToken = loginBody.token;
         await prisma.logs.deleteMany({ where: { user_id: student.id } });
         await prisma.usuario.delete({ where: { id: student.id } });
-        const response = await fetch(`${baseUrl}/api/compounds/Water`, {
+        const response = await app.inject({
             method: "GET",
+            url: "/api/compounds/Water",
             headers: { Authorization: `Bearer ${deletedUserToken}` }
         });
-        expect(response.status).toBe(401);
-        const body = await response.json();
+        expect(response.statusCode).toBe(401);
+        const body = response.json();
         expect(body.message).toBe("Usuário não encontrado");
     }, 30000);
 });

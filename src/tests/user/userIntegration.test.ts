@@ -8,7 +8,6 @@ import { user_role } from "../../generated/prisma/enums";
 import { UserRole } from "../../utils/user";
 
 describe("Teste de integração de usuários", () => {
-    let baseUrl: string;
     let token: string;
     let adminId: number;
     const adminEmail = `admin.${randomUUID()}@example.com`;
@@ -23,7 +22,7 @@ describe("Teste de integração de usuários", () => {
     const password = "SenhaTeste123!";
 
     beforeAll(async () => {
-        baseUrl = await app.listen({ port: 0, host: "127.0.0.1" });
+        await app.ready();
 
         const admin = await prisma.usuario.create({
             data: {
@@ -35,13 +34,14 @@ describe("Teste de integração de usuários", () => {
         });
         adminId = admin.id;
         
-        const login = await fetch(`${baseUrl}/auth/login`, {
+        const login = await app.inject({
             method: "POST",
+            url: "/auth/login",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: `  ${adminEmail.toUpperCase()}  `, password })
+            payload: { email: `  ${adminEmail.toUpperCase()}  `, password }
         });
-        expect(login.status).toBe(200);
-        const loginBody = await login.json();
+        expect(login.statusCode).toBe(200);
+        const loginBody = login.json();
         expect(loginBody.token).toEqual(expect.any(String));
         token = loginBody.token;
     }, 30000);
@@ -59,17 +59,18 @@ describe("Teste de integração de usuários", () => {
     test("deve criar um usuário salvando o e-mail em minúsculas e sem espaços nas extremidades", async () => {
         const user = { name: "Aluno Teste", email: `  ${email.toUpperCase()}  `, password, role: UserRole.ALUNO };
 
-        const response = await fetch(`${baseUrl}/api/users`, {
+        const response = await app.inject({
             method: "POST",
+            url: "/api/users",
             headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`
             },
-            body: JSON.stringify(user)
+            payload: user
         });
-        expect(response.status).toBe(201);
-        expect(response.headers.get("content-type")).toContain("application/json");
-        const body = await response.json();
+        expect(response.statusCode).toBe(201);
+        expect(response.headers["content-type"]).toContain("application/json");
+        const body = response.json();
         expect(body).toMatchObject({ id: expect.any(Number), name: user.name, email, role: user.role });
         expect(body).not.toHaveProperty("senha");
         expect(body).not.toHaveProperty("password");
@@ -82,23 +83,25 @@ describe("Teste de integração de usuários", () => {
     test("deve listar usuários e encontrar o usuário cadastrado", async () => {
         const user = { name: "Aluno Listagem", email: listEmail, password, role: UserRole.ALUNO };
 
-        const createResponse = await fetch(`${baseUrl}/api/users`, {
+        const createResponse = await app.inject({
             method: "POST",
+            url: "/api/users",
             headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`
             },
-            body: JSON.stringify(user)
+            payload: user
         });
-        expect(createResponse.status).toBe(201);
-        const createdUser = await createResponse.json();
+        expect(createResponse.statusCode).toBe(201);
+        const createdUser = createResponse.json();
 
-        const response = await fetch(`${baseUrl}/api/users`, {
+        const response = await app.inject({
             method: "GET",
+            url: "/api/users",
             headers: { Authorization: `Bearer ${token}` }
         });
-        expect(response.status).toBe(200);
-        const body = await response.json();
+        expect(response.statusCode).toBe(200);
+        const body = response.json();
         expect(body).toContainEqual(expect.objectContaining({
             id: createdUser.id,
             name: user.name,
@@ -109,22 +112,24 @@ describe("Teste de integração de usuários", () => {
 
     test("deve consultar um usuário pelo ID", async () => {
         const user = { name: "Aluno Consulta", email: idEmail, password, role: UserRole.ALUNO };
-        const createResponse = await fetch(`${baseUrl}/api/users`, {
+        const createResponse = await app.inject({
             method: "POST",
+            url: "/api/users",
             headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`
             },
-            body: JSON.stringify(user)
+            payload: user
         });
-        expect(createResponse.status).toBe(201);
-        const createdUser = await createResponse.json();
-        const response = await fetch(`${baseUrl}/api/users/${createdUser.id}`, {
+        expect(createResponse.statusCode).toBe(201);
+        const createdUser = createResponse.json();
+        const response = await app.inject({
             method: "GET",
+            url: `/api/users/${createdUser.id}`,
             headers: { Authorization: `Bearer ${token}` }
         });
-        expect(response.status).toBe(200);
-        const body = await response.json();
+        expect(response.statusCode).toBe(200);
+        const body = response.json();
         expect(body).toMatchObject({
             id: createdUser.id,
             name: user.name,
@@ -138,28 +143,30 @@ describe("Teste de integração de usuários", () => {
     test("deve atualizar um usuário salvando o e-mail em minúsculas e sem espaços nas extremidades", async () => {
         const user = { name: "Aluno Antes", email: updateEmail, password, role: UserRole.ALUNO };
 
-        const createResponse = await fetch(`${baseUrl}/api/users`, {
+        const createResponse = await app.inject({
             method: "POST",
+            url: "/api/users",
             headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`
             },
-            body: JSON.stringify(user)
+            payload: user
         });
-        expect(createResponse.status).toBe(201);
-        const createdUser = await createResponse.json();
+        expect(createResponse.statusCode).toBe(201);
+        const createdUser = createResponse.json();
 
         const updatedUser = { name: "Aluno Atualizado", email: `  ${updateEmail.toUpperCase()}  `, role: UserRole.ALUNO };
-        const response = await fetch(`${baseUrl}/api/users/${createdUser.id}`, {
+        const response = await app.inject({
             method: "PATCH",
+            url: `/api/users/${createdUser.id}`,
             headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`
             },
-            body: JSON.stringify(updatedUser)
+            payload: updatedUser
         });
-        expect(response.status).toBe(200);
-        const body = await response.json();
+        expect(response.statusCode).toBe(200);
+        const body = response.json();
         expect(body).toMatchObject({
             id: createdUser.id,
             name: updatedUser.name,
@@ -175,13 +182,14 @@ describe("Teste de integração de usuários", () => {
     }, 30000);
 
     test("deve impedir que o administrador exclua a própria conta", async () => {
-        const response = await fetch(`${baseUrl}/api/users/${adminId}`, {
+        const response = await app.inject({
             method: "DELETE",
+            url: `/api/users/${adminId}`,
             headers: { Authorization: `Bearer ${token}` }
         });
 
-        expect(response.status).toBe(403);
-        const body = await response.json();
+        expect(response.statusCode).toBe(403);
+        const body = response.json();
         expect(body.message).toBe("Você não pode excluir sua própria conta");
 
         const admin = await prisma.usuario.findUniqueOrThrow({ where: { id: adminId } });
@@ -193,23 +201,25 @@ describe("Teste de integração de usuários", () => {
     test("deve excluir um usuário", async () => {
         const user = { name: "Aluno Exclusão", email: deleteEmail, password, role: UserRole.ALUNO };
 
-        const createResponse = await fetch(`${baseUrl}/api/users`, {
+        const createResponse = await app.inject({
             method: "POST",
+            url: "/api/users",
             headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`
             },
-            body: JSON.stringify(user)
+            payload: user
         });
-        expect(createResponse.status).toBe(201);
-        const createdUser = await createResponse.json();
+        expect(createResponse.statusCode).toBe(201);
+        const createdUser = createResponse.json();
 
-        const response = await fetch(`${baseUrl}/api/users/${createdUser.id}`, {
+        const response = await app.inject({
             method: "DELETE",
+            url: `/api/users/${createdUser.id}`,
             headers: { Authorization: `Bearer ${token}` }
         });
-        expect(response.status).toBe(204);
-        expect(await response.text()).toBe("");
+        expect(response.statusCode).toBe(204);
+        expect(response.body).toBe("");
 
         const deletedUser = await prisma.usuario.findUnique({ where: { id: createdUser.id } });
         expect(deletedUser).toBeNull();
@@ -217,27 +227,29 @@ describe("Teste de integração de usuários", () => {
 
     test("deve rejeitar cadastro com e-mail já utilizado mesmo com letras maiúsculas e espaços", async () => {
         const user = { name: "Aluno Original", email: duplicateEmail, password, role: UserRole.ALUNO };
-        const createResponse = await fetch(`${baseUrl}/api/users`, {
+        const createResponse = await app.inject({
             method: "POST",
+            url: "/api/users",
             headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`
             },
-            body: JSON.stringify(user)
+            payload: user
         });
-        expect(createResponse.status).toBe(201);
-        const createdUser = await createResponse.json();
+        expect(createResponse.statusCode).toBe(201);
+        const createdUser = createResponse.json();
         const duplicateUser = { name: "Outro Aluno", email: `  ${duplicateEmail.toUpperCase()}  `, password, role: UserRole.ALUNO };
-        const response = await fetch(`${baseUrl}/api/users`, {
+        const response = await app.inject({
             method: "POST",
+            url: "/api/users",
             headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`
             },
-            body: JSON.stringify(duplicateUser)
+            payload: duplicateUser
         });
-        expect(response.status).toBe(400);
-        const body = await response.json();
+        expect(response.statusCode).toBe(400);
+        const body = response.json();
         expect(body.message).toBe("Usuário já possui cadastro");
         const total = await prisma.usuario.count({ where: { email: duplicateEmail } });
         expect(total).toBe(1);
@@ -248,16 +260,17 @@ describe("Teste de integração de usuários", () => {
     test("deve rejeitar cadastro com e-mail inválido", async () => {
         const user = { name: "Aluno Inválido", email: invalidEmail, password, role: UserRole.ALUNO };
 
-        const response = await fetch(`${baseUrl}/api/users`, {
+        const response = await app.inject({
             method: "POST",
+            url: "/api/users",
             headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`
             },
-            body: JSON.stringify(user)
+            payload: user
         });
-        expect(response.status).toBe(400);
-        const body = await response.json();
+        expect(response.statusCode).toBe(400);
+        const body = response.json();
         expect(body.message).toBe("Dados inválidos");
         expect(body.errors).toContainEqual(expect.objectContaining({
             path: ["email"],
@@ -270,27 +283,30 @@ describe("Teste de integração de usuários", () => {
 
     test("deve retornar erro ao consultar um usuário inexistente", async () => {
         const user = { name: "Aluno Temporário", email: missingEmail, password, role: UserRole.ALUNO };
-        const createResponse = await fetch(`${baseUrl}/api/users`, {
+        const createResponse = await app.inject({
             method: "POST",
+            url: "/api/users",
             headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`
             },
-            body: JSON.stringify(user)
+            payload: user
         });
-        expect(createResponse.status).toBe(201);
-        const createdUser = await createResponse.json();
-        const deleteResponse = await fetch(`${baseUrl}/api/users/${createdUser.id}`, {
+        expect(createResponse.statusCode).toBe(201);
+        const createdUser = createResponse.json();
+        const deleteResponse = await app.inject({
             method: "DELETE",
+            url: `/api/users/${createdUser.id}`,
             headers: {Authorization: `Bearer ${token}`}
         });
-        expect(deleteResponse.status).toBe(204);
-        const response = await fetch(`${baseUrl}/api/users/${createdUser.id}`, {
+        expect(deleteResponse.statusCode).toBe(204);
+        const response = await app.inject({
             method: "GET",
+            url: `/api/users/${createdUser.id}`,
             headers: {Authorization: `Bearer ${token}`}
         });
-        expect(response.status).toBe(404);
-        const body = await response.json();
+        expect(response.statusCode).toBe(404);
+        const body = response.json();
         expect(body.message).toBe("Usuário não encontrado");
     }, 30000);
 });
