@@ -6,7 +6,8 @@ export async function listQuizzesRepository(): Promise<IQuiz[]> {
 
     return quizzes.map((quiz) => ({
         id: quiz.id,
-        contentId: quiz.conteudo_id
+        contentId: quiz.conteudo_id,
+        teacherId: quiz.professor_id
     }));
 }
 
@@ -17,7 +18,8 @@ export async function listQuizByIdRepository(id: number): Promise<IQuiz | null> 
 
     return quiz ? {
         id: quiz.id,
-        contentId: quiz.conteudo_id
+        contentId: quiz.conteudo_id,
+        teacherId: quiz.professor_id
     } : null;
 }
 
@@ -28,20 +30,23 @@ export async function listQuizByContentIdRepository(contentId: number): Promise<
 
     return quiz ? {
         id: quiz.id,
-        contentId: quiz.conteudo_id
+        contentId: quiz.conteudo_id,
+        teacherId: quiz.professor_id
     } : null;
 }
 
-export async function createQuizRepository(quiz: ICreateQuiz): Promise<IQuiz> {
+export async function createQuizRepository(quiz: ICreateQuiz, teacherId: number): Promise<IQuiz> {
     const newQuiz = await prisma.quiz.create({
         data: {
-            conteudo_id: quiz.contentId
+            conteudo_id: quiz.contentId,
+            professor_id: teacherId
         }
     });
 
     return {
         id: newQuiz.id,
-        contentId: newQuiz.conteudo_id
+        contentId: newQuiz.conteudo_id,
+        teacherId: newQuiz.professor_id
     };
 }
 
@@ -55,7 +60,8 @@ export async function updateQuizRepository(id: number, quiz: ICreateQuiz): Promi
 
     return {
         id: updatedQuiz.id,
-        contentId: updatedQuiz.conteudo_id
+        contentId: updatedQuiz.conteudo_id,
+        teacherId: updatedQuiz.professor_id
     };
 }
 

@@ -65,7 +65,7 @@ describe("Testes de integração do quiz", () => {
 
     async function createQuizFixture(professorId = teacherId) {
         const content = await createContent(professorId);
-        const quiz = await prisma.quiz.create({ data: { conteudo_id: content.id } });
+        const quiz = await prisma.quiz.create({ data: { conteudo_id: content.id, professor_id: professorId } });
         return { content, quiz };
     }
 
@@ -116,9 +116,10 @@ describe("Testes de integração do quiz", () => {
         const response = await request("POST", "/api/quizzes", teacherToken, { contentId: content.id, teacherId: otherTeacherId, id: 999 });
         expect(response.status).toBe(201);
         const body = await response.json();
-        expect(body).toEqual({ id: expect.any(Number), contentId: content.id });
+        expect(body).toEqual({ id: expect.any(Number), contentId: content.id, teacherId });
         const savedQuiz = await prisma.quiz.findUniqueOrThrow({ where: { id: body.id } });
         expect(savedQuiz.conteudo_id).toBe(content.id);
+        expect(savedQuiz.professor_id).toBe(teacherId);
         const logs = await prisma.logs.findMany({
             where: { user_id: teacherId, action: "CADASTRO_QUIZ", description: { contains: `quiz de ID ${body.id} ` } }
         });
@@ -131,7 +132,7 @@ describe("Testes de integração do quiz", () => {
             const response = await request("GET", "/api/quizzes", token);
             expect(response.status).toBe(200);
             const body = await response.json();
-            expect(body).toContainEqual({ id: quiz.id, contentId: content.id });
+            expect(body).toContainEqual({ id: quiz.id, contentId: content.id, teacherId });
         }
     }, 30000);
 
@@ -140,18 +141,19 @@ describe("Testes de integração do quiz", () => {
         for (const token of [teacherToken, studentToken]) {
             const response = await request("GET", `/api/quizzes/${quiz.id}`, token);
             expect(response.status).toBe(200);
-            expect(await response.json()).toEqual({ id: quiz.id, contentId: content.id });
+            expect(await response.json()).toEqual({ id: quiz.id, contentId: content.id, teacherId });
         }
     }, 30000);
 
     test("deve trocar o conteúdo do quiz mantendo seu ID e registrar o log", async () => {
         const { content, quiz } = await createQuizFixture();
         const targetContent = await createContent();
-        const response = await request("PATCH", `/api/quizzes/${quiz.id}`, teacherToken, { contentId: targetContent.id });
+        const response = await request("PATCH", `/api/quizzes/${quiz.id}`, teacherToken, { contentId: targetContent.id, teacherId: otherTeacherId });
         expect(response.status).toBe(200);
-        expect(await response.json()).toEqual({ id: quiz.id, contentId: targetContent.id });
+        expect(await response.json()).toEqual({ id: quiz.id, contentId: targetContent.id, teacherId });
         const savedQuiz = await prisma.quiz.findUniqueOrThrow({ where: { id: quiz.id } });
         expect(savedQuiz.conteudo_id).toBe(targetContent.id);
+        expect(savedQuiz.professor_id).toBe(teacherId);
         expect(await prisma.quiz.findUnique({ where: { conteudo_id: content.id } })).toBeNull();
         const logs = await prisma.logs.findMany({
             where: { user_id: teacherId, action: "ALTERACAO_QUIZ", description: { contains: `quiz de ID ${quiz.id},` } }
@@ -163,7 +165,7 @@ describe("Testes de integração do quiz", () => {
         const { content, quiz } = await createQuizFixture();
         const response = await request("PATCH", `/api/quizzes/${quiz.id}`, teacherToken, { contentId: content.id });
         expect(response.status).toBe(200);
-        expect(await response.json()).toEqual({ id: quiz.id, contentId: content.id });
+        expect(await response.json()).toEqual({ id: quiz.id, contentId: content.id, teacherId });
         expect(await prisma.quiz.count({ where: { conteudo_id: content.id } })).toBe(1);
     }, 30000);
 
@@ -338,7 +340,6 @@ describe("Testes de integração do quiz", () => {
         const remove = await request("DELETE", `/api/quizzes/${quiz.id}`, teacherToken);
         expect(patch.status).toBe(400);
         expect((await patch.json()).message).toBe("Você pode somente atualizar seus próprios quizzes");
-        // O controller atual usa 500 para erros do service na exclusão.
         expect(remove.status).toBe(500);
         expect((await remove.json()).message).toBe("Você só pode excluir seus próprios quizzes");
         expect(await prisma.quiz.findUnique({ where: { id: quiz.id } })).toEqual(quiz);
@@ -353,6 +354,23 @@ describe("Testes de integração do quiz", () => {
         expect((await response.json()).message).toBe("Você pode somente vincular quizzes aos seus próprios conteúdos");
         expect(await prisma.quiz.findUnique({ where: { id: quiz.id } })).toEqual(quiz);
         expect(await prisma.quiz.findUnique({ where: { conteudo_id: targetContent.id } })).toBeNull();
+    }, 30000);
+
+    test("deve usar o criador do quiz para autorizar edição e exclusão", async () => {
+        const { quiz, content } = await createQuizFixture();
+        const savedQuiz = await prisma.quiz.update({
+            where: { id: quiz.id },
+            data: { professor_id: otherTeacherId }
+        });
+
+        const patch = await request("PATCH", `/api/quizzes/${quiz.id}`, teacherToken, { contentId: content.id });
+        const remove = await request("DELETE", `/api/quizzes/${quiz.id}`, teacherToken);
+
+        expect(patch.status).toBe(400);
+        expect((await patch.json()).message).toBe("Você pode somente atualizar seus próprios quizzes");
+        expect(remove.status).toBe(500);
+        expect((await remove.json()).message).toBe("Você só pode excluir seus próprios quizzes");
+        expect(await prisma.quiz.findUnique({ where: { id: quiz.id } })).toEqual(savedQuiz);
     }, 30000);
 
     test("deve tratar consulta, edição e exclusão de um quiz inexistente", async () => {

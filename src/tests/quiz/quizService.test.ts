@@ -53,7 +53,7 @@ const content = {
     description: "Utilize os equipamentos de proteção."
 };
 
-const savedQuiz = { id: 5, contentId: content.id };
+const savedQuiz = { id: 5, contentId: content.id, teacherId: teacher.id };
 const input = { contentId: content.id };
 const changes = { contentId: 2 };
 const updatedQuiz = { ...savedQuiz, ...changes };
@@ -104,7 +104,16 @@ describe("Regras comuns de cadastro, atualização e exclusão", () => {
 
     test("deve impedir a operação em conteúdo de outro professor", async () => {
         listContentByIdMock.mockResolvedValue({ ...content, teacherId: 20 });
+        listQuizByIdMock.mockResolvedValue({ ...savedQuiz, teacherId: 20 });
         await expect(createQuizService(input, teacher.id)).rejects.toThrow("Você pode somente criar quizzes para seus próprios conteúdos");
+        await expect(updateQuizService(savedQuiz.id, changes, teacher.id)).rejects.toThrow("Você pode somente atualizar seus próprios quizzes");
+        await expect(deleteQuizService(savedQuiz.id, teacher.id)).rejects.toThrow("Você só pode excluir seus próprios quizzes");
+        expectNoWrites();
+    });
+
+    test("deve bloquear outro professor mesmo que ele seja o dono do conteúdo", async () => {
+        listQuizByIdMock.mockResolvedValue({ ...savedQuiz, teacherId: 20 });
+
         await expect(updateQuizService(savedQuiz.id, changes, teacher.id)).rejects.toThrow("Você pode somente atualizar seus próprios quizzes");
         await expect(deleteQuizService(savedQuiz.id, teacher.id)).rejects.toThrow("Você só pode excluir seus próprios quizzes");
         expectNoWrites();
@@ -177,7 +186,7 @@ describe("createQuizService", () => {
         expect(listUserByIdMock).toHaveBeenCalledWith(teacher.id);
         expect(listContentByIdMock).toHaveBeenCalledWith(input.contentId);
         expect(listQuizByContentIdMock).toHaveBeenCalledWith(input.contentId);
-        expect(createQuizMock).toHaveBeenCalledWith(input);
+        expect(createQuizMock).toHaveBeenCalledWith(input, teacher.id);
         expect(createLogMock).toHaveBeenCalledWith(expect.objectContaining({
             userId: teacher.id,
             action: "CADASTRO_QUIZ",
@@ -228,7 +237,7 @@ describe("updateQuizService", () => {
 
     test("deve impedir a troca para um conteúdo que possui outro quiz", async () => {
         listContentByIdMock.mockResolvedValueOnce(content).mockResolvedValueOnce({ ...content, id: changes.contentId });
-        listQuizByContentIdMock.mockResolvedValue({ id: 6, contentId: changes.contentId });
+        listQuizByContentIdMock.mockResolvedValue({ id: 6, contentId: changes.contentId, teacherId: teacher.id });
         await expect(updateQuizService(savedQuiz.id, changes, teacher.id)).rejects.toThrow("Este conteúdo já possui um quiz");
         expectNoWrites();
     });

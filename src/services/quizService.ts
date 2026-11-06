@@ -47,7 +47,7 @@ export async function createQuizService(quiz: ICreateQuiz, teacherId: number) {
         throw new Error("Este conteúdo já possui um quiz");
     }
 
-    const newQuiz = await createQuizRepository(quiz);
+    const newQuiz = await createQuizRepository(quiz, teacherId);
 
     await createLogService({
         userId: teacherId,
@@ -76,7 +76,7 @@ export async function updateQuizService(id: number, quiz: ICreateQuiz, teacherId
         throw new Error("Conteúdo não encontrado");
     }
 
-    if (currentContent.teacherId !== teacherId) {
+    if (existingQuiz.teacherId !== teacherId) {
         throw new Error("Você pode somente atualizar seus próprios quizzes");
     }
 
@@ -125,7 +125,7 @@ export async function deleteQuizService(id: number, teacherId: number) {
         throw new Error("Conteúdo não encontrado");
     }
 
-    if (content.teacherId !== teacherId) {
+    if (quiz.teacherId !== teacherId) {
         throw new Error("Você só pode excluir seus próprios quizzes");
     }
 
