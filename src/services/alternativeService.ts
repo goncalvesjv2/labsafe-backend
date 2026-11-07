@@ -6,22 +6,69 @@ import { listUserByIdRepository } from "../repositories/userRepository";
 import { UserRole } from "../utils/user";
 import { createLogService } from "./logService";
 
-export async function listAlternativesService() {
+export async function listAlternativesService(userId: number) {
+    const user = await listUserByIdRepository(userId);
+
+    if (!user) {
+        throw new Error("Usuário não encontrado");
+    }
+
+    if (user.role !== UserRole.PROFESSOR && user.role !== UserRole.ALUNO) {
+        throw new Error("Somente professores e alunos podem consultar alternativas");
+    }
+
     const alternatives = await listAlternativesRepository();
+
+    if (user.role === UserRole.ALUNO) {
+        return alternatives.map((alternative) => ({
+            id: alternative.id,
+            questionId: alternative.questionId,
+            text: alternative.text
+        }));
+    }
+
     return alternatives;
 }
 
-export async function listAlternativeByIdService(id: number) {
+export async function listAlternativeByIdService(id: number, userId: number) {
+    const user = await listUserByIdRepository(userId);
+
+    if (!user) {
+        throw new Error("Usuário não encontrado");
+    }
+
+    if (user.role !== UserRole.PROFESSOR && user.role !== UserRole.ALUNO) {
+        throw new Error("Somente professores e alunos podem consultar alternativas");
+    }
+
     const alternative = await listAlternativeByIdRepository(id);
 
     if (!alternative) {
         throw new Error("Alternativa não encontrada");
     }
 
+    if (user.role === UserRole.ALUNO) {
+        return {
+            id: alternative.id,
+            questionId: alternative.questionId,
+            text: alternative.text
+        };
+    }
+
     return alternative;
 }
 
-export async function listAlternativesByQuestionIdService(questionId: number) {
+export async function listAlternativesByQuestionIdService(questionId: number, userId: number) {
+    const user = await listUserByIdRepository(userId);
+
+    if (!user) {
+        throw new Error("Usuário não encontrado");
+    }
+
+    if (user.role !== UserRole.PROFESSOR && user.role !== UserRole.ALUNO) {
+        throw new Error("Somente professores e alunos podem consultar alternativas");
+    }
+
     const question = await listQuestionByIdRepository(questionId);
 
     if (!question) {
@@ -29,6 +76,15 @@ export async function listAlternativesByQuestionIdService(questionId: number) {
     }
 
     const alternatives = await listAlternativesByQuestionIdRepository(questionId);
+
+    if (user.role === UserRole.ALUNO) {
+        return alternatives.map((alternative) => ({
+            id: alternative.id,
+            questionId: alternative.questionId,
+            text: alternative.text
+        }));
+    }
+
     return alternatives;
 }
 
@@ -121,7 +177,7 @@ export async function updateAlternativeService(id: number, alternative: { text: 
         throw new Error("Somente professores podem atualizar alternativas");
     }
 
-    const existingAlternative = await listAlternativeByIdService(id);
+    const existingAlternative = await listAlternativeByIdService(id, teacherId);
     const currentQuestion = await listQuestionByIdRepository(existingAlternative.questionId);
 
     if (!currentQuestion) {
@@ -170,7 +226,7 @@ export async function changeCorrectService(id: number, teacherId: number) {
         throw new Error("Somente professores podem alterar a alternativa correta");
     }
 
-    const alternative = await listAlternativeByIdService(id);
+    const alternative = await listAlternativeByIdService(id, teacherId);
     const question = await listQuestionByIdRepository(alternative.questionId);
 
     if (!question) {
@@ -209,7 +265,7 @@ export async function deleteAlternativeService(id: number, teacherId: number) {
         throw new Error("Somente professores podem excluir alternativas");
     }
 
-    const alternative = await listAlternativeByIdService(id);
+    const alternative = await listAlternativeByIdService(id, teacherId);
     const question = await listQuestionByIdRepository(alternative.questionId);
 
     if (!question) {

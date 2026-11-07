@@ -5,7 +5,8 @@ import { IPayload } from "../interfaces/IPayload";
 
 export async function listAlternativesController(request: FastifyRequest, reply: FastifyReply) {
     try {
-        const alternatives = await listAlternativesService();
+        const logged = request.user as IPayload;
+        const alternatives = await listAlternativesService(logged.sub);
         return reply.status(200).send(alternatives);
     } catch (error) {
         return reply.status(500).send(error);
@@ -20,7 +21,8 @@ export async function listAlternativeByIdController(request: FastifyRequest<{Par
             return reply.status(400).send({message: "ID inválido"});
         }
 
-        const alternative = await listAlternativeByIdService(id);
+        const logged = request.user as IPayload;
+        const alternative = await listAlternativeByIdService(id, logged.sub);
         return reply.status(200).send(alternative);
     } catch (error) {
         return reply.status(404).send(error);
@@ -35,7 +37,8 @@ export async function listAlternativesByQuestionIdController(request: FastifyReq
             return reply.status(400).send({message: "ID inválido"});
         }
 
-        const alternatives = await listAlternativesByQuestionIdService(questionId);
+        const logged = request.user as IPayload;
+        const alternatives = await listAlternativesByQuestionIdService(questionId, logged.sub);
         return reply.status(200).send(alternatives);
     } catch (error) {
         return reply.status(404).send(error);
