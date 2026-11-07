@@ -8,6 +8,7 @@ import { pubChemRoutes } from "./routes/pubChemRoutes";
 import { contentRoutes } from "./routes/contentRoutes";
 import { quizRoutes } from "./routes/quizRoutes";
 import { questionRoutes } from "./routes/questionRoutes";
+import { alternativeRoutes } from "./routes/alternativeRoutes";
 
 export const app = Fastify({ logger: true });
 
@@ -32,3 +33,4 @@ app.register(pubChemRoutes, { prefix: '/api' });
 app.register(contentRoutes, { prefix: "/api" });
 app.register(quizRoutes, { prefix: "/api" });
 app.register(questionRoutes, { prefix: "/api" });
+app.register(alternativeRoutes, { prefix: "/api" });
