@@ -47,30 +47,28 @@ export async function countAlternativesByQuestionIdRepository(questionId: number
     });
 }
 
-export async function createAlternativeRepository(alternative: ICreateAlternative): Promise<IAlternative> {
-    const newAlternative = await prisma.alternative.create({
-        data: {
+export async function createAlternativeRepository(alternatives: ICreateAlternative[]): Promise<IAlternative[]> {
+    const newAlternatives = await prisma.alternative.createManyAndReturn({
+        data: alternatives.map((alternative) => ({
             question_id: alternative.questionId,
             text: alternative.text,
             correct: alternative.correct
-        }
+        }))
     });
 
-    return {
-        id: newAlternative.id,
-        questionId: newAlternative.question_id,
-        text: newAlternative.text,
-        correct: newAlternative.correct
-    };
+    return newAlternatives.map((alternative) => ({
+        id: alternative.id,
+        questionId: alternative.question_id,
+        text: alternative.text,
+        correct: alternative.correct
+    }));
 }
 
-export async function updateAlternativeRepository(id: number, alternative: Partial<ICreateAlternative>): Promise<IAlternative> {
+export async function updateAlternativeRepository(id: number, alternative: { text?: string }): Promise<IAlternative> {
     const updatedAlternative = await prisma.alternative.update({
         where: { id },
         data: {
-            question_id: alternative.questionId,
-            text: alternative.text,
-            correct: alternative.correct
+            text: alternative.text
         }
     });
 
@@ -79,6 +77,30 @@ export async function updateAlternativeRepository(id: number, alternative: Parti
         questionId: updatedAlternative.question_id,
         text: updatedAlternative.text,
         correct: updatedAlternative.correct
+    };
+}
+
+export async function changeCorrectRepository(id: number, questionId: number): Promise<IAlternative> {
+    const [, updated] = await prisma.$transaction([
+        prisma.alternative.updateMany({
+            where: {
+                question_id: questionId,
+                correct: true,
+                id: { not: id }
+            },
+            data: { correct: false }
+        }),
+        prisma.alternative.update({
+            where: { id, question_id: questionId },
+            data: { correct: true }
+        })
+    ], { isolationLevel: "Serializable" });
+
+    return {
+        id: updated.id,
+        questionId: updated.question_id,
+        text: updated.text,
+        correct: updated.correct
     };
 }
 
