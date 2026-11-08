@@ -10,6 +10,10 @@ export interface IAttempt extends ICreateAttempt {
     createdAt: Date;
 }
 
+export interface IAttemptWithStudent extends IAttempt {
+    studentName: string;
+}
+
 export interface ISubmitAttempt {
     quizId: number;
     answers: {

@@ -1,9 +1,10 @@
 import { prisma } from "../database/prisma";
 import type { Prisma } from "../generated/prisma/client";
-import type { IAttempt, ICreateAttempt } from "../interfaces/IAttempt";
+import type { IAttempt, IAttemptWithStudent, ICreateAttempt } from "../interfaces/IAttempt";
 
-export async function listAttemptsRepository(): Promise<IAttempt[]> {
+export async function listAttemptsRepository(): Promise<IAttemptWithStudent[]> {
     const attempts = await prisma.attempt.findMany({
+        include: { student: { select: { name: true } } },
         orderBy: { id: "asc" }
     });
 
@@ -11,30 +12,34 @@ export async function listAttemptsRepository(): Promise<IAttempt[]> {
         id: attempt.id,
         quizId: attempt.quiz_id,
         studentId: attempt.student_id,
+        studentName: attempt.student.name,
         score: Number(attempt.score),
         approved: attempt.approved,
         createdAt: attempt.created_at
     }));
 }
 
-export async function listAttemptByIdRepository(id: number): Promise<IAttempt | null> {
+export async function listAttemptByIdRepository(id: number): Promise<IAttemptWithStudent | null> {
     const attempt = await prisma.attempt.findUnique({
-        where: { id }
+        where: { id },
+        include: { student: { select: { name: true } } }
     });
 
     return attempt ? {
         id: attempt.id,
         quizId: attempt.quiz_id,
         studentId: attempt.student_id,
+        studentName: attempt.student.name,
         score: Number(attempt.score),
         approved: attempt.approved,
         createdAt: attempt.created_at
     } : null;
 }
 
-export async function listAttemptsByStudentIdRepository(studentId: number): Promise<IAttempt[]> {
+export async function listAttemptsByStudentIdRepository(studentId: number): Promise<IAttemptWithStudent[]> {
     const attempts = await prisma.attempt.findMany({
         where: { student_id: studentId },
+        include: { student: { select: { name: true } } },
         orderBy: { id: "asc" }
     });
 
@@ -42,15 +47,17 @@ export async function listAttemptsByStudentIdRepository(studentId: number): Prom
         id: attempt.id,
         quizId: attempt.quiz_id,
         studentId: attempt.student_id,
+        studentName: attempt.student.name,
         score: Number(attempt.score),
         approved: attempt.approved,
         createdAt: attempt.created_at
     }));
 }
 
-export async function listAttemptsByQuizIdRepository(quizId: number): Promise<IAttempt[]> {
+export async function listAttemptsByQuizIdRepository(quizId: number): Promise<IAttemptWithStudent[]> {
     const attempts = await prisma.attempt.findMany({
         where: { quiz_id: quizId },
+        include: { student: { select: { name: true } } },
         orderBy: { id: "asc" }
     });
 
@@ -58,6 +65,7 @@ export async function listAttemptsByQuizIdRepository(quizId: number): Promise<IA
         id: attempt.id,
         quizId: attempt.quiz_id,
         studentId: attempt.student_id,
+        studentName: attempt.student.name,
         score: Number(attempt.score),
         approved: attempt.approved,
         createdAt: attempt.created_at

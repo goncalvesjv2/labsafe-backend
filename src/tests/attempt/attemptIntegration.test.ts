@@ -239,6 +239,7 @@ describe("Testes de integração de tentativas", () => {
         const body = response.json();
         expect(body.id).toBe(attemptId);
         expect(body.studentId).toBe(studentId);
+        expect(body.studentName).toBe("Aluno das Tentativas");
         expect(body.answers).toHaveLength(3);
 
         for (const answer of correctAnswers) {
@@ -246,13 +247,15 @@ describe("Testes de integração de tentativas", () => {
         }
     });
 
-    test("deve listar somente as tentativas do quiz selecionado", async () => {
+    test("deve listar somente as tentativas do quiz selecionado com o nome de cada aluno", async () => {
         const firstQuiz = await createQuiz();
         const secondQuiz = await createQuiz();
         const first = await sendAttempt(firstQuiz.quiz.id, firstQuiz.correctAnswers);
         const second = await sendAttempt(secondQuiz.quiz.id, secondQuiz.correctAnswers);
+        const anotherStudent = await sendAttempt(firstQuiz.quiz.id, firstQuiz.correctAnswers, otherStudentToken);
         expect(first.statusCode).toBe(201);
         expect(second.statusCode).toBe(201);
+        expect(anotherStudent.statusCode).toBe(201);
         const response = await app.inject({
             method: "GET",
             url: `/api/quizzes/${firstQuiz.quiz.id}/attempts`,
@@ -260,7 +263,10 @@ describe("Testes de integração de tentativas", () => {
         });
 
         expect(response.statusCode).toBe(200);
-        expect(response.json()).toEqual([first.json().attempt]);
+        expect(response.json()).toEqual([
+            { ...first.json().attempt, studentName: "Aluno das Tentativas" },
+            { ...anotherStudent.json().attempt, studentName: "Outro Aluno" }
+        ]);
     });
 
     test("deve contar somente as tentativas do aluno no quiz selecionado", async () => {
@@ -283,9 +289,13 @@ describe("Testes de integração de tentativas", () => {
         expect(response.statusCode).toBe(200);
         expect(response.json()).toEqual({
             studentId,
+            studentName: "Aluno das Tentativas",
             quizId: quiz.id,
             totalAttempts: 2,
-            attempts: [first.json().attempt, second.json().attempt]
+            attempts: [
+                { ...first.json().attempt, studentName: "Aluno das Tentativas" },
+                { ...second.json().attempt, studentName: "Aluno das Tentativas" }
+            ]
         });
     });
 
@@ -305,7 +315,7 @@ describe("Testes de integração de tentativas", () => {
         expect(list.statusCode).toBe(200);
         expect(list.json()).toEqual([]);
         expect(history.statusCode).toBe(200);
-        expect(history.json()).toEqual({ studentId, quizId: quiz.id, totalAttempts: 0, attempts: [] });
+        expect(history.json()).toEqual({ studentId, studentName: "Aluno das Tentativas", quizId: quiz.id, totalAttempts: 0, attempts: [] });
     });
 
     test("deve manter uma questão respondida no quiz original durante a edição", async () => {

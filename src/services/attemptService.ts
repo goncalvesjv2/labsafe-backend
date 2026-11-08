@@ -52,6 +52,7 @@ export async function listAttemptsByStudentAndQuizIdService(studentId: number, q
 
     return {
         studentId,
+        studentName: student.name,
         quizId,
         totalAttempts: studentAttempts.length,
         attempts: studentAttempts

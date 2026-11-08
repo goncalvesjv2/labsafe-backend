@@ -65,6 +65,7 @@ const savedAttempt = {
     approved: true,
     createdAt: new Date("2026-11-08T12:00:00Z")
 };
+const listedAttempt = { ...savedAttempt, studentName: student.name };
 const savedAnswers = [
     { id: 1, attemptId: savedAttempt.id, questionId: 1, alternativeId: 11 },
     { id: 2, attemptId: savedAttempt.id, questionId: 2, alternativeId: 21 },
@@ -82,8 +83,8 @@ beforeEach(() => {
     ]);
     createAttemptMock.mockImplementation(async (attempt) => ({ ...savedAttempt, ...attempt }));
     createAnswerMock.mockResolvedValue(savedAnswers);
-    listAttemptByIdMock.mockResolvedValue(savedAttempt);
-    listAttemptsByQuizIdMock.mockResolvedValue([savedAttempt]);
+    listAttemptByIdMock.mockResolvedValue(listedAttempt);
+    listAttemptsByQuizIdMock.mockResolvedValue([listedAttempt]);
     listAnswersMock.mockResolvedValue(savedAnswers);
     createLogMock.mockResolvedValue({ id: 1, user_id: student.id, action: "CADASTRO_TENTATIVA", description: "Tentativa enviada", created_at: savedAttempt.createdAt });
 });
@@ -339,31 +340,31 @@ describe("Consultas de tentativas", () => {
         listUserByIdMock.mockImplementation(async (id) => id === teacher.id ? teacher : student);
     });
 
-    test("deve consultar uma tentativa com suas respostas", async () => {
+    test("deve consultar uma tentativa com o nome do aluno e suas respostas", async () => {
         const result = await listAttemptByIdService(savedAttempt.id, teacher.id);
-        expect(result).toEqual({ ...savedAttempt, answers: savedAnswers });
+        expect(result).toEqual({ ...listedAttempt, answers: savedAnswers });
         expect(listAnswersMock).toHaveBeenCalledWith(savedAttempt.id);
     });
 
     test("deve listar as tentativas de um quiz do professor", async () => {
         const result = await listAttemptsByQuizIdService(quiz.id, teacher.id);
-        expect(result).toEqual([savedAttempt]);
+        expect(result).toEqual([listedAttempt]);
         expect(listAttemptsByQuizIdMock).toHaveBeenCalledWith(quiz.id);
     });
 
     test("deve contar somente as tentativas do aluno no quiz selecionado", async () => {
-        const secondAttempt = { ...savedAttempt, id: 2, score: 33.3, approved: false };
-        const anotherStudentAttempt = { ...savedAttempt, id: 3, studentId: 30 };
-        listAttemptsByQuizIdMock.mockResolvedValue([savedAttempt, secondAttempt, anotherStudentAttempt]);
+        const secondAttempt = { ...listedAttempt, id: 2, score: 33.3, approved: false };
+        const anotherStudentAttempt = { ...listedAttempt, id: 3, studentId: 30, studentName: "Outro aluno" };
+        listAttemptsByQuizIdMock.mockResolvedValue([listedAttempt, secondAttempt, anotherStudentAttempt]);
         const result = await listAttemptsByStudentAndQuizIdService(student.id, quiz.id, teacher.id);
-        expect(result).toEqual({ studentId: student.id, quizId: quiz.id, totalAttempts: 2, attempts: [savedAttempt, secondAttempt] });
+        expect(result).toEqual({ studentId: student.id, studentName: student.name, quizId: quiz.id, totalAttempts: 2, attempts: [listedAttempt, secondAttempt] });
         expect(listAttemptsByQuizIdMock).toHaveBeenCalledWith(quiz.id);
     });
 
     test("deve retornar lista vazia e contagem zero quando o aluno não tem tentativas", async () => {
-        listAttemptsByQuizIdMock.mockResolvedValue([{ ...savedAttempt, studentId: 30 }]);
+        listAttemptsByQuizIdMock.mockResolvedValue([{ ...listedAttempt, studentId: 30, studentName: "Outro aluno" }]);
         const result = await listAttemptsByStudentAndQuizIdService(student.id, quiz.id, teacher.id);
-        expect(result).toEqual({ studentId: student.id, quizId: quiz.id, totalAttempts: 0, attempts: [] });
+        expect(result).toEqual({ studentId: student.id, studentName: student.name, quizId: quiz.id, totalAttempts: 0, attempts: [] });
     });
 
     test("deve permitir a consulta de um quiz sem tentativas", async () => {
