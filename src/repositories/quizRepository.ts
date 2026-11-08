@@ -66,7 +66,12 @@ export async function updateQuizRepository(id: number, quiz: ICreateQuiz): Promi
 }
 
 export async function deleteQuizRepository(id: number): Promise<void> {
-    await prisma.quiz.delete({
-        where: { id }
-    });
+    await prisma.$transaction([
+        prisma.attempt.deleteMany({
+            where: { quiz_id: id }
+        }),
+        prisma.quiz.delete({
+            where: { id }
+        })
+    ]);
 }
