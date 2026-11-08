@@ -9,6 +9,7 @@ import { contentRoutes } from "./routes/contentRoutes";
 import { quizRoutes } from "./routes/quizRoutes";
 import { questionRoutes } from "./routes/questionRoutes";
 import { alternativeRoutes } from "./routes/alternativeRoutes";
+import { attemptRoutes } from "./routes/attemptRoutes";
 
 export const app = Fastify({ logger: true });
 
@@ -34,3 +35,4 @@ app.register(contentRoutes, { prefix: "/api" });
 app.register(quizRoutes, { prefix: "/api" });
 app.register(questionRoutes, { prefix: "/api" });
 app.register(alternativeRoutes, { prefix: "/api" });
+app.register(attemptRoutes, { prefix: "/api" });
