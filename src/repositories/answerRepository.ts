@@ -1,4 +1,5 @@
 import { prisma } from "../database/prisma";
+import type { Prisma } from "../generated/prisma/client";
 import type { IAnswer, ICreateAnswer } from "../interfaces/IAnswer";
 
 export async function listAnswersByAttemptIdRepository(attemptId: number): Promise<IAnswer[]> {
@@ -15,8 +16,8 @@ export async function listAnswersByAttemptIdRepository(attemptId: number): Promi
     }));
 }
 
-export async function createAnswerRepository(answers: ICreateAnswer[]): Promise<IAnswer[]> {
-    const newAnswers = await prisma.answer.createManyAndReturn({
+export async function createAnswerRepository(answers: ICreateAnswer[], transaction: Prisma.TransactionClient = prisma): Promise<IAnswer[]> {
+    const newAnswers = await transaction.answer.createManyAndReturn({
         data: answers.map((answer) => ({
             attempt_id: answer.attemptId,
             question_id: answer.questionId,

@@ -1,4 +1,5 @@
 import { prisma } from "../database/prisma";
+import type { Prisma } from "../generated/prisma/client";
 import type { IAttempt, ICreateAttempt } from "../interfaces/IAttempt";
 
 export async function listAttemptsRepository(): Promise<IAttempt[]> {
@@ -63,8 +64,8 @@ export async function listAttemptsByQuizIdRepository(quizId: number): Promise<IA
     }));
 }
 
-export async function createAttemptRepository(attempt: ICreateAttempt): Promise<IAttempt> {
-    const newAttempt = await prisma.attempt.create({
+export async function createAttemptRepository(attempt: ICreateAttempt, transaction: Prisma.TransactionClient = prisma): Promise<IAttempt> {
+    const newAttempt = await transaction.attempt.create({
         data: {
             quiz_id: attempt.quizId,
             student_id: attempt.studentId,

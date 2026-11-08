@@ -9,3 +9,11 @@ export interface IAttempt extends ICreateAttempt {
     id: number;
     createdAt: Date;
 }
+
+export interface ISubmitAttempt {
+    quizId: number;
+    answers: {
+        questionId: number;
+        alternativeId: number;
+    }[];
+}
