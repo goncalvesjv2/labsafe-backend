@@ -234,7 +234,7 @@ describe("Testes de integração de questões", () => {
         expect(logs).toHaveLength(1);
     });
 
-    test("deve mover a questão para outro quiz próprio com nove questões", async () => {
+    test("deve rejeitar atualização somente com quizId e manter a questão no quiz original", async () => {
         const quiz = await createQuiz();
         const targetQuiz = await createQuiz();
         const question = await createQuestion(quiz.id);
@@ -246,12 +246,12 @@ describe("Testes de integração de questões", () => {
             payload: { quizId: targetQuiz.id }
         });
 
-        expect(response.statusCode).toBe(200);
-        expect(response.json()).toEqual({ id: question.id, quizId: targetQuiz.id, statement: question.statement });
+        expect(response.statusCode).toBe(400);
+        expect(response.json().message).toBe("Dados inválidos");
         const savedQuestion = await prisma.question.findUniqueOrThrow({ where: { id: question.id } });
-        expect(savedQuestion.quiz_id).toBe(targetQuiz.id);
-        expect(await prisma.question.count({ where: { quiz_id: quiz.id } })).toBe(0);
-        expect(await prisma.question.count({ where: { quiz_id: targetQuiz.id } })).toBe(10);
+        expect(savedQuestion).toEqual(question);
+        expect(await prisma.question.count({ where: { quiz_id: quiz.id } })).toBe(1);
+        expect(await prisma.question.count({ where: { quiz_id: targetQuiz.id } })).toBe(9);
     });
 
     test("deve editar uma questão mantendo o mesmo quiz com dez questões", async () => {
@@ -337,7 +337,7 @@ describe("Testes de integração de questões", () => {
         })).toBe(0);
     });
 
-    test("deve impedir mover uma questão para um quiz com dez questões", async () => {
+    test("deve editar somente o enunciado mesmo se receber o ID de outro quiz com dez questões", async () => {
         const quiz = await createQuiz();
         const targetQuiz = await createQuiz();
         const question = await createQuestion(quiz.id);
@@ -346,12 +346,13 @@ describe("Testes de integração de questões", () => {
             method: "PATCH",
             url: `/api/questions/${question.id}`,
             headers: { authorization: `Bearer ${teacherToken}` },
-            payload: { quizId: targetQuiz.id }
+            payload: { quizId: targetQuiz.id, statement: "Novo enunciado" }
         });
 
-        expect(response.statusCode).toBe(400);
-        expect(response.json().message).toBe("O quiz pode ter no máximo 10 questões");
-        expect(await prisma.question.findUnique({ where: { id: question.id } })).toEqual(question);
+        expect(response.statusCode).toBe(200);
+        expect(response.json()).toEqual({ id: question.id, quizId: quiz.id, statement: "Novo enunciado" });
+        expect(await prisma.question.findUnique({ where: { id: question.id } })).toEqual({ ...question, statement: "Novo enunciado" });
+        expect(await prisma.question.count({ where: { quiz_id: quiz.id } })).toBe(1);
         expect(await prisma.question.count({ where: { quiz_id: targetQuiz.id } })).toBe(10);
     });
 
@@ -377,15 +378,20 @@ describe("Testes de integração de questões", () => {
                 headers: { authorization: `Bearer ${teacherToken}` },
                 payload: body
             });
+            expect(post.statusCode).toBe(400);
+            expect(post.json().message).toBe("Dados inválidos");
+        }
+
+        const invalidUpdates = [{}, { quizId: quiz.id }, { statement: "" }, { statement: "   " }, { statement: 123 }, { statement: null }];
+
+        for (const body of invalidUpdates) {
             const patch = await app.inject({
                 method: "PATCH",
                 url: `/api/questions/${question.id}`,
                 headers: { authorization: `Bearer ${teacherToken}` },
                 payload: body
             });
-            expect(post.statusCode).toBe(400);
             expect(patch.statusCode).toBe(400);
-            expect(post.json().message).toBe("Dados inválidos");
             expect(patch.json().message).toBe("Dados inválidos");
         }
         expect(await prisma.question.count({ where: { quiz_id: quiz.id } })).toBe(1);
@@ -475,7 +481,7 @@ describe("Testes de integração de questões", () => {
         expect(await prisma.question.findUnique({ where: { id: question.id } })).toBeNull();
     });
 
-    test("deve rejeitar consulta, cadastro e transferência para um quiz inexistente", async () => {
+    test("deve rejeitar consulta e cadastro para um quiz inexistente", async () => {
         const missingQuiz = await createQuiz();
         await prisma.quiz.delete({ where: { id: missingQuiz.id } });
         const quiz = await createQuiz();
@@ -491,19 +497,10 @@ describe("Testes de integração de questões", () => {
             headers: { authorization: `Bearer ${teacherToken}` },
             payload: { quizId: missingQuiz.id, statement: "Pergunta" }
         });
-        const patch = await app.inject({
-            method: "PATCH",
-            url: `/api/questions/${question.id}`,
-            headers: { authorization: `Bearer ${teacherToken}` },
-            payload: { quizId: missingQuiz.id }
-        });
-
         expect(get.statusCode).toBe(404);
         expect(post.statusCode).toBe(400);
-        expect(patch.statusCode).toBe(400);
         expect(get.json().message).toBe("Quiz não encontrado");
         expect(post.json().message).toBe("Quiz não encontrado");
-        expect(patch.json().message).toBe("Quiz não encontrado");
         expect(await prisma.question.findUnique({ where: { id: question.id } })).toEqual(question);
         expect(await prisma.question.count({ where: { quiz_id: quiz.id } })).toBe(1);
     });
@@ -543,7 +540,7 @@ describe("Testes de integração de questões", () => {
         expect(await prisma.question.count({ where: { quiz_id: ownQuizOfOtherTeacher.id } })).toBe(0);
     });
 
-    test("deve impedir mover uma questão própria para o quiz de outro professor", async () => {
+    test("deve ignorar o ID de um quiz de outro professor ao editar o enunciado", async () => {
         const quiz = await createQuiz();
         const targetQuiz = await createQuiz(otherTeacherId);
         const question = await createQuestion(quiz.id);
@@ -551,12 +548,12 @@ describe("Testes de integração de questões", () => {
             method: "PATCH",
             url: `/api/questions/${question.id}`,
             headers: { authorization: `Bearer ${teacherToken}` },
-            payload: { quizId: targetQuiz.id }
+            payload: { quizId: targetQuiz.id, statement: "Novo enunciado" }
         });
 
-        expect(response.statusCode).toBe(400);
-        expect(response.json().message).toBe("Você pode somente vincular questões aos seus próprios quizzes");
-        expect(await prisma.question.findUnique({ where: { id: question.id } })).toEqual(question);
+        expect(response.statusCode).toBe(200);
+        expect(response.json()).toEqual({ id: question.id, quizId: quiz.id, statement: "Novo enunciado" });
+        expect(await prisma.question.findUnique({ where: { id: question.id } })).toEqual({ ...question, statement: "Novo enunciado" });
         expect(await prisma.question.count({ where: { quiz_id: targetQuiz.id } })).toBe(0);
     });
 

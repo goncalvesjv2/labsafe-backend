@@ -30,9 +30,9 @@ describe("Validação de questões", () => {
         expect(result).toEqual({ statement: "Nova pergunta" });
     });
 
-    test("deve permitir atualizar apenas o quiz ou os dois campos", () => {
-        expect(updateQuestionSchema.parse({ quizId: 2 })).toEqual({ quizId: 2 });
-        expect(updateQuestionSchema.parse({ quizId: 2, statement: "Nova pergunta" })).toEqual({ quizId: 2, statement: "Nova pergunta" });
+    test("deve rejeitar atualização somente com quizId e remover esse campo quando existe enunciado", () => {
+        expect(updateQuestionSchema.safeParse({ quizId: 2 }).success).toBe(false);
+        expect(updateQuestionSchema.parse({ quizId: 2, statement: "Nova pergunta" })).toEqual({ statement: "Nova pergunta" });
     });
 
     test("deve rejeitar atualizações sem campos ou com valores inválidos", () => {

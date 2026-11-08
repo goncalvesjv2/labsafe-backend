@@ -82,7 +82,7 @@ export async function createQuestionService(question: ICreateQuestion, teacherId
     return newQuestion;
 }
 
-export async function updateQuestionService(id: number, question: Partial<ICreateQuestion>, teacherId: number) {
+export async function updateQuestionService(id: number, question: { statement?: string }, teacherId: number) {
     const teacher = await listUserByIdRepository(teacherId);
 
     if (!teacher) {
@@ -110,50 +110,22 @@ export async function updateQuestionService(id: number, question: Partial<ICreat
         throw new Error("Você pode somente atualizar suas próprias questões");
     }
 
-    if (question.quizId === undefined && question.statement === undefined) {
-        throw new Error("Informe ao menos um campo para atualizar");
+    if (typeof question.statement !== "string") {
+        throw new Error("O enunciado é obrigatório");
     }
 
-    const changes = { ...question };
+    const statement = question.statement.trim();
 
-    if (changes.statement !== undefined) {
-        changes.statement = changes.statement.trim();
-
-        if (!changes.statement) {
-            throw new Error("O enunciado é obrigatório");
-        }
+    if (!statement) {
+        throw new Error("O enunciado é obrigatório");
     }
 
-    if (changes.quizId !== undefined && changes.quizId !== existingQuestion.quizId) {
-        const targetQuiz = await listQuizByIdRepository(changes.quizId);
-
-        if (!targetQuiz) {
-            throw new Error("Quiz não encontrado");
-        }
-
-        const targetContent = await listContentByIdRepository(targetQuiz.contentId);
-
-        if (!targetContent) {
-            throw new Error("Conteúdo não encontrado");
-        }
-
-        if (targetQuiz.teacherId !== teacherId) {
-            throw new Error("Você pode somente vincular questões aos seus próprios quizzes");
-        }
-
-        const totalQuestions = await countQuestionsByQuizIdRepository(changes.quizId);
-
-        if (totalQuestions >= 10) {
-            throw new Error("O quiz pode ter no máximo 10 questões");
-        }
-    }
-
-    const updatedQuestion = await updateQuestionRepository(id, changes);
+    const updatedQuestion = await updateQuestionRepository(id, { statement });
 
     await createLogService({
         userId: teacherId,
         action: "ALTERACAO_QUESTAO",
-        description: `O usuário com o e-mail ${teacher.email} atualizou a questão de ID ${id}, do quiz de ID ${existingQuestion.quizId} para o quiz de ID ${updatedQuestion.quizId}`
+        description: `O usuário com o e-mail ${teacher.email} atualizou o enunciado da questão de ID ${id}, no quiz de ID ${existingQuestion.quizId}`
     });
 
     return updatedQuestion;

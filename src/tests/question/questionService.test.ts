@@ -47,14 +47,7 @@ const content = {
     title: "Segurança",
     description: "Orientações de segurança."
 };
-const targetContent = {
-    id: 2,
-    teacherId: teacher.id,
-    title: "Equipamentos",
-    description: "Equipamentos de proteção."
-};
 const quiz = { id: 5, contentId: content.id, teacherId: teacher.id };
-const targetQuiz = { id: 6, contentId: targetContent.id, teacherId: teacher.id };
 const input = { quizId: quiz.id, statement: "Quando utilizar luvas?" };
 const savedQuestion = { id: 8, quizId: quiz.id, statement: "Quando utilizar luvas?" };
 const changes = { statement: "Quando utilizar óculos de proteção?" };
@@ -148,7 +141,7 @@ describe("Permissões e falhas comuns", () => {
         // O conteúdo é do professor autenticado, mas o quiz foi criado por outro.
         listQuizByIdMock.mockResolvedValue({ ...quiz, teacherId: 20 });
         await expect(createQuestionService(input, teacher.id)).rejects.toThrow("seus próprios quizzes");
-        await expect(updateQuestionService(savedQuestion.id, { quizId: targetQuiz.id }, teacher.id)).rejects.toThrow("suas próprias questões");
+        await expect(updateQuestionService(savedQuestion.id, changes, teacher.id)).rejects.toThrow("suas próprias questões");
         await expect(deleteQuestionService(savedQuestion.id, teacher.id)).rejects.toThrow("suas próprias questões");
         expectNoWrites();
     });
@@ -273,57 +266,19 @@ describe("Atualização de questões", () => {
         expect(countQuestionsMock).not.toHaveBeenCalled();
     });
 
-    test("deve permitir mover a questão para outro quiz próprio com nove questões", async () => {
-        listQuizByIdMock.mockResolvedValueOnce(quiz);
-        listQuizByIdMock.mockResolvedValueOnce(targetQuiz);
-        listContentByIdMock.mockResolvedValueOnce(content);
-        listContentByIdMock.mockResolvedValueOnce(targetContent);
-        countQuestionsMock.mockResolvedValue(9);
-        const movedQuestion = { id: savedQuestion.id, quizId: targetQuiz.id, statement: input.statement };
-        updateQuestionMock.mockResolvedValue(movedQuestion);
-        const result = await updateQuestionService(savedQuestion.id, { quizId: targetQuiz.id }, teacher.id);
-        expect(result).toEqual(movedQuestion);
-        expect(countQuestionsMock).toHaveBeenCalledWith(targetQuiz.id);
-        expect(updateQuestionMock).toHaveBeenCalledWith(savedQuestion.id, { quizId: targetQuiz.id });
-    });
+    test("deve enviar somente o enunciado ao repository mesmo se receber outro quizId", async () => {
+        const data = { quizId: 99, statement: "  Quando utilizar óculos de proteção?  " };
+        const result = await updateQuestionService(savedQuestion.id, data, teacher.id);
 
-    test("deve impedir mover a questão para um quiz que já possui dez questões", async () => {
-        listQuizByIdMock.mockResolvedValueOnce(quiz);
-        listQuizByIdMock.mockResolvedValueOnce(targetQuiz);
-        listContentByIdMock.mockResolvedValueOnce(content);
-        listContentByIdMock.mockResolvedValueOnce(targetContent);
-        countQuestionsMock.mockResolvedValue(10);
-        await expect(updateQuestionService(savedQuestion.id, { quizId: targetQuiz.id }, teacher.id)).rejects.toThrow("O quiz pode ter no máximo 10 questões");
-        expectNoWrites();
-    });
-
-    test("deve impedir a troca para um quiz inexistente", async () => {
-        listQuizByIdMock.mockResolvedValueOnce(quiz);
-        listQuizByIdMock.mockResolvedValueOnce(null);
-        await expect(updateQuestionService(savedQuestion.id, { quizId: 999 }, teacher.id)).rejects.toThrow("Quiz não encontrado");
-        expectNoWrites();
-    });
-
-    test("deve impedir a troca quando o conteúdo de destino não existe", async () => {
-        listQuizByIdMock.mockResolvedValueOnce(quiz);
-        listQuizByIdMock.mockResolvedValueOnce(targetQuiz);
-        listContentByIdMock.mockResolvedValueOnce(content);
-        listContentByIdMock.mockResolvedValueOnce(null);
-        await expect(updateQuestionService(savedQuestion.id, { quizId: targetQuiz.id }, teacher.id)).rejects.toThrow("Conteúdo não encontrado");
-        expectNoWrites();
-    });
-
-    test("deve impedir mover a questão para um quiz de outro professor", async () => {
-        listQuizByIdMock.mockResolvedValueOnce(quiz);
-        listQuizByIdMock.mockResolvedValueOnce({ ...targetQuiz, teacherId: 20 });
-        listContentByIdMock.mockResolvedValueOnce(content);
-        listContentByIdMock.mockResolvedValueOnce(targetContent);
-        await expect(updateQuestionService(savedQuestion.id, { quizId: targetQuiz.id }, teacher.id)).rejects.toThrow("Você pode somente vincular questões aos seus próprios quizzes");
-        expectNoWrites();
+        expect(result.quizId).toBe(quiz.id);
+        expect(updateQuestionMock).toHaveBeenCalledWith(savedQuestion.id, changes);
+        expect(listQuizByIdMock).toHaveBeenCalledTimes(1);
+        expect(listQuizByIdMock).toHaveBeenCalledWith(quiz.id);
+        expect(countQuestionsMock).not.toHaveBeenCalled();
     });
 
     test("deve rejeitar uma atualização sem campos", async () => {
-        await expect(updateQuestionService(savedQuestion.id, {}, teacher.id)).rejects.toThrow("Informe ao menos um campo para atualizar");
+        await expect(updateQuestionService(savedQuestion.id, {}, teacher.id)).rejects.toThrow("O enunciado é obrigatório");
         expectNoWrites();
     });
 

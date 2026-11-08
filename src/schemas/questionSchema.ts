@@ -5,8 +5,6 @@ export const questionSchema = z.object({
     statement: z.string().trim().min(1, "O enunciado é obrigatório")
 });
 
-export const updateQuestionSchema = questionSchema.partial().refine((question) => {
-    return question.quizId !== undefined || question.statement !== undefined;
-}, {
-    message: "Informe ao menos um campo para atualizar"
+export const updateQuestionSchema = z.object({
+    statement: z.string().trim().min(1, "O enunciado é obrigatório")
 });

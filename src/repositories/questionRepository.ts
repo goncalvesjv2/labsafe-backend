@@ -59,11 +59,10 @@ export async function createQuestionRepository(question: ICreateQuestion): Promi
     };
 }
 
-export async function updateQuestionRepository(id: number, question: Partial<ICreateQuestion>): Promise<IQuestion> {
+export async function updateQuestionRepository(id: number, question: { statement: string }): Promise<IQuestion> {
     const updatedQuestion = await prisma.question.update({
         where: { id },
         data: {
-            quiz_id: question.quizId,
             statement: question.statement
         }
     });
