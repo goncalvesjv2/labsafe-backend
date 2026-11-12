@@ -1,0 +1,18 @@
+import type { FastifyReply, FastifyRequest } from "fastify";
+import { UserRole } from "../utils/user";
+import type { IPayload } from "../interfaces/IPayload";
+import { createLogService } from "../services/logService";
+
+export async function adminAuthorizationMiddleware(request: FastifyRequest, reply: FastifyReply) {
+    const user = request.user as IPayload;
+   
+    if (user.role !== UserRole.ADMIN) {
+        await createLogService({
+            userId: user.sub,
+            action: "FALHA_AUTORIZACAO",
+            description: "Usuário tentou acessar sem permissão"
+        })
+        
+        return reply.status(403).send({message: "Acesso não autorizado"})
+    }
+}

@@ -1,8 +1,38 @@
+import "dotenv/config";
 import fastifyCors from "@fastify/cors";
 import Fastify from "fastify";
+import { userRoutes } from "./routes/userRoutes";
+import { authRoutes } from "./routes/authRoutes";
+import fastifyJwt from "@fastify/jwt";
+import { pubChemRoutes } from "./routes/pubChemRoutes";
+import { contentRoutes } from "./routes/contentRoutes";
+import { quizRoutes } from "./routes/quizRoutes";
+import { questionRoutes } from "./routes/questionRoutes";
+import { alternativeRoutes } from "./routes/alternativeRoutes";
+import { attemptRoutes } from "./routes/attemptRoutes";
 
 export const app = Fastify({ logger: true });
 
 app.register(fastifyCors, {
-    origin: "*",
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"]
 })
+
+const secretJWT = process.env.JWT_SECRET;
+
+if (!secretJWT) {
+    throw new Error("Chave secreta do JWT não configurado")
+}
+
+app.register(fastifyJwt, {
+    secret: secretJWT,
+})
+
+app.register(userRoutes, { prefix: '/api' });
+app.register(authRoutes, { prefix: '/auth' });
+app.register(pubChemRoutes, { prefix: '/api' });
+app.register(contentRoutes, { prefix: "/api" });
+app.register(quizRoutes, { prefix: "/api" });
+app.register(questionRoutes, { prefix: "/api" });
+app.register(alternativeRoutes, { prefix: "/api" });
+app.register(attemptRoutes, { prefix: "/api" });

@@ -1,0 +1,124 @@
+name: CI - LabSafe
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  linter:
+    name: Linter
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Configurar o Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Executar o Biome
+        run: npm run lint
+
+
+  testes-unitarios:
+    name: Testes unitários
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      DATABASE_URL: postgresql://localhost:5432/labsafe_test
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Configurar o Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Preparar ambiente de testes
+        run: |
+          echo 'DATABASE_URL=postgresql://localhost:5432/labsafe_test' > .env.test
+
+      - name: Gerar Prisma Client
+        run: npx prisma generate
+
+      - name: Executar testes unitários
+        run: npm run test:unit
+
+
+  testes-integracao:
+    name: Testes de integração
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      PGPASSWORD: ${{ secrets.CI_DB_PASSWORD }}
+      DATABASE_URL: postgresql://postgres:${{ secrets.CI_DB_PASSWORD }}@localhost:5432/labsafe_test
+      JWT_SECRET: ${{ secrets.CI_JWT_SECRET }}
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: labsafe_test
+          POSTGRES_PASSWORD: ${{ secrets.CI_DB_PASSWORD }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d labsafe_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Configurar o Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Preparar banco de testes
+        run: |
+          for arquivo in prisma/migrations/*.sql; do
+            echo "Aplicando $arquivo"
+            psql -v ON_ERROR_STOP=1 \
+              -h localhost \
+              -p 5432 \
+              -U postgres \
+              -d labsafe_test \
+              -f "$arquivo"
+          done
+        
+      - name: Criar arquivo de ambiente de testes
+        run: |
+          printf 'DATABASE_URL=%s\n' "$DATABASE_URL" > .env.test
+    
+      - name: Gerar Prisma Client
+        run: npx prisma generate
+
+      - name: Executar testes de integração
+        run: npm run test:integration

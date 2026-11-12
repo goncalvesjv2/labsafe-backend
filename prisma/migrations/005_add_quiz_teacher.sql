@@ -1,0 +1,1 @@
+ALTER TABLE quiz ADD COLUMN professor_id INTEGER NOT NULL REFERENCES usuario(id);
