@@ -71,6 +71,7 @@ jobs:
     env:
       PGPASSWORD: ${{ secrets.CI_DB_PASSWORD }}
       DATABASE_URL: postgresql://postgres:${{ secrets.CI_DB_PASSWORD }}@localhost:5432/labsafe_test
+      JWT_SECRET: ${{ secrets.CI_JWT_SECRET }}
 
     services:
       postgres:
