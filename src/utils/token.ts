@@ -1,5 +1,5 @@
 import { app } from "../app";
-import { IToken } from "../interfaces/IToken";
+import type { IToken } from "../interfaces/IToken";
 
 export function generateToken(user: IToken) {
     const token = app.jwt.sign({

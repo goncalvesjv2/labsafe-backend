@@ -9,7 +9,8 @@
     "dist": "tsup src",
     "start:dist": "node dist/server.js",
     "test:unit": "jest --testPathPatterns=\"(Service|Schema)[.]test[.]ts$\" --runInBand",
-    "test:integration": "jest --testPathPatterns=\"(Integration|E2E|Persistence|Routes)[.]test[.]ts$\" --runInBand"
+    "test:integration": "jest --testPathPatterns=\"(Integration|E2E|Persistence|Routes)[.]test[.]ts$\" --runInBand",
+    "lint": "biome lint ./src --error-on-warnings"
   },
   "keywords": [],
   "author": "",
@@ -27,6 +28,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.6.7",
     "@swc/core": "^1.16.13",
     "@swc/jest": "^0.2.39",
     "@types/bcrypt": "^6.0.0",

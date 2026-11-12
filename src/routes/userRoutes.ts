@@ -1,4 +1,4 @@
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { createUserController, deleteUserController, listUserByIdController, listUsersController, updateUserController } from "../controllers/userController";
 import { authMiddleware } from "../middlewares/authMiddleware";
 import { adminAuthorizationMiddleware } from "../middlewares/adminAuthorizationMiddleware";

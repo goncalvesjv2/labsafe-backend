@@ -1,5 +1,5 @@
-import { FastifyReply, FastifyRequest } from "fastify";
-import { IPayload } from "../interfaces/IPayload";
+import type { FastifyReply, FastifyRequest } from "fastify";
+import type { IPayload } from "../interfaces/IPayload";
 import { listUserByIdRepository } from "../repositories/userRepository";
 import { createLogService } from "../services/logService";
 import { UserRole } from "../utils/user";

@@ -1,4 +1,4 @@
-import { ICreateQuiz } from "../interfaces/IQuiz";
+import type { ICreateQuiz } from "../interfaces/IQuiz";
 import { createQuizRepository, deleteQuizRepository, listQuizByContentIdRepository, listQuizByIdRepository, listQuizzesRepository, updateQuizRepository } from "../repositories/quizRepository";
 import { listContentByIdRepository } from "../repositories/contentRepository";
 import { listUserByIdRepository } from "../repositories/userRepository";

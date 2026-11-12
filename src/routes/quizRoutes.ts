@@ -1,4 +1,4 @@
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { listQuizzesController, listQuizByIdController, createQuizController, updateQuizController, deleteQuizController } from "../controllers/quizController";
 import { authMiddleware } from "../middlewares/authMiddleware";
 import { quizAuthorizationMiddleware } from "../middlewares/quizAuthorizationMiddleware";

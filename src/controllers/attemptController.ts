@@ -1,7 +1,7 @@
-import { FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import { createAttemptService, listAttemptByIdService, listAttemptsByQuizIdService, listAttemptsByStudentAndQuizIdService } from "../services/attemptService";
 import { attemptSchema } from "../schemas/attemptSchema";
-import { IPayload } from "../interfaces/IPayload";
+import type { IPayload } from "../interfaces/IPayload";
 
 export async function listAttemptByIdController(request: FastifyRequest<{Params: {id: string}}>, reply: FastifyReply) {
     try {

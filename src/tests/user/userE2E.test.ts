@@ -17,7 +17,7 @@ describe("API de usuários", () => {
         const admin = await prisma.usuario.create({
             data: {
                 name: "Administrador Teste E2E",
-                email: "admin.e2e." + Date.now() + "@example.com",
+                email: `admin.e2e.${Date.now()}@example.com`,
                 senha: await bcrypt.hash("SenhaTeste123!", 10),
                 role: user_role.Admin
             }

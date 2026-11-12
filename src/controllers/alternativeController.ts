@@ -1,7 +1,7 @@
-import { FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import { changeCorrectService, createAlternativeService, deleteAlternativeService, listAlternativeByIdService, listAlternativesByQuestionIdService, listAlternativesService, updateAlternativeService } from "../services/alternativeService";
 import { alternativeSchema, updateAlternativeSchema } from "../schemas/alternativeSchema";
-import { IPayload } from "../interfaces/IPayload";
+import type { IPayload } from "../interfaces/IPayload";
 
 export async function listAlternativesController(request: FastifyRequest, reply: FastifyReply) {
     try {

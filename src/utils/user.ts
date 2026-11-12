@@ -1,5 +1,5 @@
 import { user_role } from "../generated/prisma/enums";
-import { IUserFormat } from "../interfaces/IUserFormat";
+import type { IUserFormat } from "../interfaces/IUserFormat";
 
 export enum UserRole {
     ADMIN = "Admin",

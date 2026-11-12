@@ -1,4 +1,4 @@
-import { UserRole } from "../utils/user";
+import type { UserRole } from "../utils/user";
 
 export interface ICreateUser {
     name: string;

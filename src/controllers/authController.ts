@@ -1,7 +1,7 @@
-import { FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import { loginService } from "../services/authService";
-import { ILogin } from "../interfaces/ILogin";
-import { IPayload } from "../interfaces/IPayload";
+import type { ILogin } from "../interfaces/ILogin";
+import type { IPayload } from "../interfaces/IPayload";
 import { listUserByIdService } from "../services/userService";
 
 export async function loginController(request: FastifyRequest, reply: FastifyReply) {

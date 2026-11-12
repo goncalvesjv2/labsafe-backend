@@ -1,4 +1,4 @@
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { changeCorrectController, createAlternativeController, deleteAlternativeController, listAlternativeByIdController, listAlternativesByQuestionIdController, listAlternativesController, updateAlternativeController } from "../controllers/alternativeController";
 import { authMiddleware } from "../middlewares/authMiddleware";
 import { alternativeAuthorizationMiddleware } from "../middlewares/alternativeAuthorizationMiddleware";

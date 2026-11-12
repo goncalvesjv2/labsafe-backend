@@ -1,4 +1,4 @@
-import { FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import { pubChemService } from "../services/pubChemService";
 
 export async function pubChemController(request: FastifyRequest, reply: FastifyReply) {
@@ -6,7 +6,7 @@ export async function pubChemController(request: FastifyRequest, reply: FastifyR
         const { name } = request.params as { name: string };
         const compound = await pubChemService(name);
         return reply.status(200).send(compound);
-    } catch (error) {
+    } catch {
         return reply.status(404).send({message: "Composto não encontrado no PubChem"});
     }
 }

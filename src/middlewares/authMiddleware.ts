@@ -1,4 +1,4 @@
-import { FastifyRequest } from "fastify";
+import type { FastifyRequest } from "fastify";
 
 export async function authMiddleware (request: FastifyRequest) {
     await request.jwtVerify();

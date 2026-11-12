@@ -1,9 +1,9 @@
-import { FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import { createUserService, deleteUserService, listUserByIdService, listUsersService, updateUserService } from "../services/userService";
-import { IPayload } from "../interfaces/IPayload";
+import type { IPayload } from "../interfaces/IPayload";
 import { userSchema, updateUserSchema } from "../schemas/userSchema";
 
-export async function listUsersController(request: FastifyRequest, reply: FastifyReply) {
+export async function listUsersController(_request: FastifyRequest, reply: FastifyReply) {
     try {
         const users = await listUsersService();
         return reply.status(200).send(users);

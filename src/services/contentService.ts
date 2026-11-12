@@ -1,4 +1,4 @@
-import { ICreateContent } from "../interfaces/IContent";
+import type { ICreateContent } from "../interfaces/IContent";
 import { createContentRepository, listContentByIdRepository, listContentsRepository, updateContentRepository, deleteContentRepository } from "../repositories/contentRepository";
 import { listUserByIdRepository } from "../repositories/userRepository";
 import { UserRole } from "../utils/user";

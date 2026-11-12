@@ -1,9 +1,9 @@
-import { FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import { createQuizService, deleteQuizService, listQuizByIdService, listQuizzesService, updateQuizService } from "../services/quizService";
 import { quizSchema } from "../schemas/quizSchema";
-import { IPayload } from "../interfaces/IPayload";
+import type { IPayload } from "../interfaces/IPayload";
 
-export async function listQuizzesController(request: FastifyRequest, reply: FastifyReply) {
+export async function listQuizzesController(_request: FastifyRequest, reply: FastifyReply) {
     try {
         const quizzes = await listQuizzesService();
         return reply.status(200).send(quizzes);

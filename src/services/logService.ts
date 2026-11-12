@@ -1,4 +1,4 @@
-import { ILog } from "../interfaces/ILog";
+import type { ILog } from "../interfaces/ILog";
 import { createLogRepository } from "../repositories/logRepository";
 
 export async function createLogService(log: ILog) {

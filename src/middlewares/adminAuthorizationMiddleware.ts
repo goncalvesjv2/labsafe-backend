@@ -1,6 +1,6 @@
-import { FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import { UserRole } from "../utils/user";
-import { IPayload } from "../interfaces/IPayload";
+import type { IPayload } from "../interfaces/IPayload";
 import { createLogService } from "../services/logService";
 
 export async function adminAuthorizationMiddleware(request: FastifyRequest, reply: FastifyReply) {

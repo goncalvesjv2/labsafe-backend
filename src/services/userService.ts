@@ -1,4 +1,4 @@
-import { ICreateUser } from "../interfaces/IUser";
+import type { ICreateUser } from "../interfaces/IUser";
 import { createUserRepository, deleteUserRepository, listUserByEmailRepository, listUserByIdRepository, listUsersRepository, updateUserRepository } from "../repositories/userRepository";
 import { UserRole } from "../utils/user";
 import bcrypt from "bcrypt";

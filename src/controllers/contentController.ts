@@ -1,9 +1,9 @@
-import { FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import { createContentService, deleteContentService, listContentByIdService, listContentsService, updateContentService } from "../services/contentService";
 import { contentSchema, updateSchema } from "../schemas/contentSchema";
-import { IPayload } from "../interfaces/IPayload";
+import type { IPayload } from "../interfaces/IPayload";
 
-export async function listContentsController(request: FastifyRequest, reply: FastifyReply) {
+export async function listContentsController(_request: FastifyRequest, reply: FastifyReply) {
     try {
         const contents = await listContentsService();
         return reply.status(200).send(contents);

@@ -1,4 +1,4 @@
-import { IPubChem } from "../interfaces/IPubChem";
+import type { IPubChem } from "../interfaces/IPubChem";
 
 export async function pubChemService(name: string) {
     const encodeName = encodeURIComponent(name);

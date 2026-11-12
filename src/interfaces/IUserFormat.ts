@@ -1,4 +1,4 @@
-import { user_role } from "../generated/prisma/enums";
+import type { user_role } from "../generated/prisma/enums";
 
 export interface IUserFormat {
     id: number;

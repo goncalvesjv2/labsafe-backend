@@ -1,4 +1,4 @@
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { pubChemController } from "../controllers/pubChemController";
 import { authMiddleware } from "../middlewares/authMiddleware";
 import { studentAuthorizationMiddleware } from "../middlewares/studentAuthorizationMiddleware";

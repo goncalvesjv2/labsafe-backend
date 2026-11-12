@@ -1,4 +1,4 @@
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { listContentsController, listContentByIdController, createContentController, updateContentController, deleteContentController } from "../controllers/contentController";
 import { authMiddleware } from "../middlewares/authMiddleware";
 import { contentAuthorizationMiddleware } from "../middlewares/contentAuthorizationMiddleware";

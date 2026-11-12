@@ -1,4 +1,4 @@
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { getProfileController, loginController } from "../controllers/authController";
 import { authMiddleware } from "../middlewares/authMiddleware";
 

@@ -1,5 +1,5 @@
 import { prisma } from "../database/prisma";
-import { ICreateContent } from "../interfaces/IContent";
+import type { ICreateContent } from "../interfaces/IContent";
 
 export async function listContentsRepository() {
     const contents = await prisma.conteudo.findMany();
