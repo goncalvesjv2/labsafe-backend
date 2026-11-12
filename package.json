@@ -7,7 +7,9 @@
     "test": "jest",
     "start": "tsx watch src/server.ts",
     "dist": "tsup src",
-    "start:dist": "node dist/server.js"
+    "start:dist": "node dist/server.js",
+    "test:unit": "jest --testPathPatterns=\"(Service|Schema)[.]test[.]ts$\" --runInBand",
+    "test:integration": "jest --testPathPatterns=\"(Integration|E2E|Persistence|Routes)[.]test[.]ts$\" --runInBand"
   },
   "keywords": [],
   "author": "",
