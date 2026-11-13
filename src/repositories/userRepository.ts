@@ -1,6 +1,7 @@
 import type { ICreateUser, IUserResponse } from "../interfaces/IUser";
 import type { IUserFormat } from "../interfaces/IUserFormat";
 import { prisma } from "../database/prisma";
+import type { Prisma } from "../generated/prisma/client";
 import { user_role } from "../generated/prisma/enums";
 import { UserRole, formatUser } from "../utils/user";
 import type { UpdateUser } from "../schemas/userSchema";
@@ -16,8 +17,8 @@ export async function listUsersRepository(): Promise<IUserResponse[]> {
     return users.map(formatUser);
 }
 
-export async function listUserByIdRepository(id: number): Promise<IUserResponse | null> {
-    const user = await prisma.usuario.findUnique({
+export async function listUserByIdRepository(id: number, transaction: Prisma.TransactionClient = prisma): Promise<IUserResponse | null> {
+    const user = await transaction.usuario.findUnique({
         where: { id },
     });
 
@@ -58,8 +59,8 @@ export async function updateUserRepository(id: number, user: UpdateUser, passwor
     return updatedUser ? formatUser(updatedUser) : null;
 }
 
-export async function changeUserStatusRepository(id: number, ativo: boolean): Promise<IUserResponse | null> {
-    const updatedUsers = await prisma.usuario.updateManyAndReturn({
+export async function changeUserStatusRepository(id: number, ativo: boolean, transaction: Prisma.TransactionClient = prisma): Promise<IUserResponse | null> {
+    const updatedUsers = await transaction.usuario.updateManyAndReturn({
         where: { id },
         data: { ativo },
     });

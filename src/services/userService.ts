@@ -4,6 +4,7 @@ import { UserRole } from "../utils/user";
 import bcrypt from "bcrypt";
 import { createLogService } from "./logService";
 import type { UpdateUser } from "../schemas/userSchema";
+import { prisma } from "../database/prisma";
 
 export async function listUsersService() {
     const users = await listUsersRepository();
@@ -75,39 +76,41 @@ export async function changeUserStatusService(id: number, ativo: boolean, userId
         throw new Error("Você não pode desativar sua própria conta");
     }
 
-    const admin = await listUserByIdRepository(userId);
+    return prisma.$transaction(async (transaction) => {
+        const admin = await listUserByIdRepository(userId, transaction);
 
-    if (!admin) {
-        throw new Error("Usuário não encontrado");
-    }
+        if (!admin) {
+            throw new Error("Usuário não encontrado");
+        }
 
-    if (!admin.ativo || admin.role !== UserRole.ADMIN) {
-        throw new Error("Somente administradores ativos podem alterar o status de usuários");
-    }
+        if (!admin.ativo || admin.role !== UserRole.ADMIN) {
+            throw new Error("Somente administradores ativos podem alterar o status de usuários");
+        }
 
-    const user = await listUserByIdRepository(id);
+        const user = await listUserByIdRepository(id, transaction);
 
-    if (!user) {
-        throw new Error("Usuário não encontrado");
-    }
+        if (!user) {
+            throw new Error("Usuário não encontrado");
+        }
 
-    if (user.ativo === ativo) {
-        return user;
-    }
+        if (user.ativo === ativo) {
+            return user;
+        }
 
-    const updatedUser = await changeUserStatusRepository(id, ativo);
+        const updatedUser = await changeUserStatusRepository(id, ativo, transaction);
 
-    if (!updatedUser) {
-        throw new Error("Usuário não encontrado");
-    }
+        if (!updatedUser) {
+            throw new Error("Usuário não encontrado");
+        }
 
-    await createLogService({
-        userId,
-        action: "ALTERACAO_STATUS_USUARIO",
-        description: `O usuário com o e-mail ${updatedUser.email} foi ${ativo ? "ativado" : "desativado"}`
+        await createLogService({
+            userId,
+            action: "ALTERACAO_STATUS_USUARIO",
+            description: `O usuário com o e-mail ${updatedUser.email} foi ${ativo ? "ativado" : "desativado"}`
+        }, transaction);
+
+        return updatedUser;
     });
-
-    return updatedUser;
 }
 
 export async function deleteUserService(id: number, userId: number) {
