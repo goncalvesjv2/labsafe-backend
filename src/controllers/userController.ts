@@ -1,7 +1,7 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { createUserService, deleteUserService, listUserByIdService, listUsersService, updateUserService } from "../services/userService";
+import { changeUserStatusService, createUserService, deleteUserService, listUserByIdService, listUsersService, updateUserService } from "../services/userService";
 import { IPayload } from "../interfaces/IPayload";
-import { userSchema, updateUserSchema } from "../schemas/userSchema";
+import { changeUserStatusSchema, userSchema, updateUserSchema } from "../schemas/userSchema";
 
 export async function listUsersController(request: FastifyRequest, reply: FastifyReply) {
     try {
@@ -66,6 +66,31 @@ export async function updateUserController(request: FastifyRequest<{Params: {id:
         const logged = request.user as IPayload;
         const updateUser = await updateUserService(id, result.data, logged.sub);
         return reply.status(200).send(updateUser);
+    } catch (error) {
+        return reply.status(400).send(error);
+    }
+}
+
+export async function changeUserStatusController(request: FastifyRequest<{Params: {id: string}}>, reply: FastifyReply) {
+    try {
+        const id = Number(request.params.id);
+
+        if (!Number.isSafeInteger(id) || id <= 0) {
+            return reply.status(400).send({message: "ID inválido"});
+        }
+
+        const result = changeUserStatusSchema.safeParse(request.body);
+
+        if (!result.success) {
+            return reply.status(400).send({
+                message: "Dados inválidos",
+                errors: result.error.issues
+            });
+        }
+
+        const logged = request.user as IPayload;
+        const user = await changeUserStatusService(id, result.data.ativo, logged.sub);
+        return reply.status(200).send(user);
     } catch (error) {
         return reply.status(400).send(error);
     }

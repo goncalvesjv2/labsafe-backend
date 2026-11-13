@@ -10,4 +10,8 @@ export const userSchema = z.object({
 
 export const updateUserSchema = userSchema.partial({ password: true });
 
+export const changeUserStatusSchema = z.object({
+    ativo: z.boolean()
+}).strict();
+
 export type UpdateUser = z.infer<typeof updateUserSchema>;
