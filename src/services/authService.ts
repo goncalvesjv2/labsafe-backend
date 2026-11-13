@@ -6,7 +6,7 @@ import { createLogService } from './logService';
 export async function loginService(email: string, password: string) {
     const isExistUser = await listUserByEmailRepository(email.trim().toLowerCase());
 
-    if (!isExistUser) {
+    if (!isExistUser || !isExistUser.ativo) {
         throw new Error("E-mail ou senha inválidos");
     }
 
