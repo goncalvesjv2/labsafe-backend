@@ -1,5 +1,5 @@
 import { ICreateUser } from "../interfaces/IUser";
-import { createUserRepository, deleteUserRepository, listUserByEmailRepository, listUserByIdRepository, listUsersRepository, updateUserRepository } from "../repositories/userRepository";
+import { changeUserStatusRepository, createUserRepository, deleteUserRepository, listUserByEmailRepository, listUserByIdRepository, listUsersRepository, updateUserRepository } from "../repositories/userRepository";
 import { UserRole } from "../utils/user";
 import bcrypt from "bcrypt";
 import { createLogService } from "./logService";
@@ -68,6 +68,46 @@ export async function updateUserService(id: number, user: UpdateUser, userId: nu
     });
 
     return updateUser;
+}
+
+export async function changeUserStatusService(id: number, ativo: boolean, userId: number) {
+    if (id === userId && !ativo) {
+        throw new Error("Você não pode desativar sua própria conta");
+    }
+
+    const admin = await listUserByIdRepository(userId);
+
+    if (!admin) {
+        throw new Error("Usuário não encontrado");
+    }
+
+    if (!admin.ativo || admin.role !== UserRole.ADMIN) {
+        throw new Error("Somente administradores ativos podem alterar o status de usuários");
+    }
+
+    const user = await listUserByIdRepository(id);
+
+    if (!user) {
+        throw new Error("Usuário não encontrado");
+    }
+
+    if (user.ativo === ativo) {
+        return user;
+    }
+
+    const updatedUser = await changeUserStatusRepository(id, ativo);
+
+    if (!updatedUser) {
+        throw new Error("Usuário não encontrado");
+    }
+
+    await createLogService({
+        userId,
+        action: "ALTERACAO_STATUS_USUARIO",
+        description: `O usuário com o e-mail ${updatedUser.email} foi ${ativo ? "ativado" : "desativado"}`
+    });
+
+    return updatedUser;
 }
 
 export async function deleteUserService(id: number, userId: number) {
