@@ -58,6 +58,16 @@ export async function updateUserRepository(id: number, user: UpdateUser, passwor
     return updatedUser ? formatUser(updatedUser) : null;
 }
 
+export async function changeUserStatusRepository(id: number, ativo: boolean): Promise<IUserResponse | null> {
+    const updatedUsers = await prisma.usuario.updateManyAndReturn({
+        where: { id },
+        data: { ativo },
+    });
+
+    const updatedUser = updatedUsers[0];
+    return updatedUser ? formatUser(updatedUser) : null;
+}
+
 export async function deleteUserRepository(id: number): Promise<IUserFormat> {
     return prisma.usuario.delete({
         where: { id },
