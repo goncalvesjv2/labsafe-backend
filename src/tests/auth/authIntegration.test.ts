@@ -5,6 +5,14 @@ import { UserRole } from "../../utils/user";
 describe("Testes de integração - autenticação", () => {
     const loginServiceMock = jest.fn<(email: string, password: string) => Promise<{ token: string }>>();
     const findUser = jest.fn<(id: number) => Promise<IUserResponse>>();
+    const findAuthenticatedUser = jest.fn<(id: number) => Promise<IUserResponse | null>>();
+    const profile = {
+        id: 7,
+        name: "Usuário de teste",
+        email: "perfil@example.com",
+        role: UserRole.ALUNO,
+        ativo: true,
+    };
 
     let app: typeof import("../../app").app;
 
@@ -18,6 +26,10 @@ describe("Testes de integração - autenticação", () => {
             ...jest.requireActual<typeof import("../../services/userService")>("../../services/userService"),
             listUserByIdService: findUser,
         }));
+        jest.doMock("../../repositories/userRepository", () => ({
+            ...jest.requireActual<typeof import("../../repositories/userRepository")>("../../repositories/userRepository"),
+            listUserByIdRepository: findAuthenticatedUser,
+        }));
 
         const appModule = await import("../../app");
         app = appModule.app;
@@ -28,6 +40,8 @@ describe("Testes de integração - autenticação", () => {
     beforeEach(() => {
         loginServiceMock.mockReset();
         findUser.mockReset();
+        findAuthenticatedUser.mockReset();
+        findAuthenticatedUser.mockResolvedValue(profile);
     });
 
     afterAll(async () => {
@@ -38,6 +52,7 @@ describe("Testes de integração - autenticação", () => {
         } finally {
             jest.dontMock("../../services/authService");
             jest.dontMock("../../services/userService");
+            jest.dontMock("../../repositories/userRepository");
         }
     });
 
@@ -87,14 +102,6 @@ describe("Testes de integração - autenticação", () => {
     });
 
     describe("Consulta do próprio perfil", () => {
-        const profile = {
-            id: 7,
-            name: "Usuário de teste",
-            email: "perfil@example.com",
-            role: UserRole.ALUNO,
-            ativo: true,
-        };
-
         test.each([UserRole.ADMIN, UserRole.PROFESSOR, UserRole.ALUNO])("retorna apenas os dados do usuário autenticado para %s", async (role) => {
             const user = { ...profile, role, senha: "nao-expor", password: "nao-expor" };
             findUser.mockResolvedValue(user);
@@ -140,15 +147,16 @@ describe("Testes de integração - autenticação", () => {
             expect(findUser).not.toHaveBeenCalled();
         });
 
-        test("retorna 404 se o usuário não existe mais", async () => {
-            findUser.mockRejectedValue(new Error("Usuário não encontrado"));
+        test("rejeita a autenticação se o usuário não existe mais", async () => {
+            findAuthenticatedUser.mockResolvedValue(null);
             const token = app.jwt.sign({ sub: profile.id, role: UserRole.ALUNO });
             const response = await app.inject({
                 method: "GET",
                 url: "/auth/me",
                 headers: { authorization: `Bearer ${token}` },
             });
-            expect(response.statusCode).toBe(404);
+            expect(response.statusCode).toBe(401);
+            expect(findUser).not.toHaveBeenCalled();
         });
     });
 });
