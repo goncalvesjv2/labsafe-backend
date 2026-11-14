@@ -1,12 +1,21 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { loginService } from "../services/authService";
-import { ILogin } from "../interfaces/ILogin";
+import { loginSchema } from "../schemas/authSchema";
 import { IPayload } from "../interfaces/IPayload";
 import { listUserByIdService } from "../services/userService";
 
 export async function loginController(request: FastifyRequest, reply: FastifyReply) {
     try {
-        const { email, password } = request.body as ILogin;
+        const result = loginSchema.safeParse(request.body);
+
+        if (!result.success) {
+            return reply.status(400).send({
+                message: "Dados inválidos",
+                errors: result.error.issues
+            });
+        }
+
+        const { email, password } = result.data;
         const login = await loginService(email, password);
         return reply.status(200).send(login);        
     } catch (error) {
