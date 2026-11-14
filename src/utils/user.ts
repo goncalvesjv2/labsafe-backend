@@ -21,7 +21,11 @@ export function mapUserRole(role: user_role): UserRole {
 }
 
 export function formatUser(user: IUserFormat) {
-    const {senha, ...userWithoutPassword} = user;
-
-    return {...userWithoutPassword, role: mapUserRole(user.role)};
+    return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: mapUserRole(user.role),
+        ativo: user.ativo
+    };
 }
