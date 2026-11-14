@@ -428,6 +428,42 @@ describe("Teste de integração de usuários", () => {
             expect((await prisma.usuario.findUniqueOrThrow({ where: { id: user.id } })).role).toBe(user_role.Professor_a_);
         });
 
+        test("Admin perde o acesso administrativo com o token antigo após virar aluno", async () => {
+            const login = await app.inject({
+                method: "POST",
+                url: "/auth/login",
+                payload: { email: admin.email, password }
+            });
+            expect(login.statusCode).toBe(200);
+            const oldToken = login.json().token;
+
+            const accessBefore = await app.inject({
+                method: "GET",
+                url: "/api/users",
+                headers: { authorization: `Bearer ${oldToken}` }
+            });
+            expect(accessBefore.statusCode).toBe(200);
+
+            // Outro admin altera o cargo de quem já está conectado.
+            const changeRole = await app.inject({
+                method: "PATCH",
+                url: `/api/users/${admin.id}`,
+                headers: { authorization: `Bearer ${token}` },
+                payload: { name: admin.name, email: admin.email, role: UserRole.ALUNO }
+            });
+            expect(changeRole.statusCode).toBe(200);
+            const savedUser = await prisma.usuario.findUniqueOrThrow({ where: { id: admin.id } });
+            expect(savedUser.role).toBe(user_role.Aluno_a_);
+
+            const accessAfter = await app.inject({
+                method: "GET",
+                url: "/api/users",
+                headers: { authorization: `Bearer ${oldToken}` }
+            });
+            expect(accessAfter.statusCode).toBe(403);
+            expect(accessAfter.json().message).toBe("Acesso não autorizado");
+        });
+
         test("Admin pode desativar outro usuário e registrar a alteração", async () => {
             const response = await changeStatus(false);
             expect(response.statusCode).toBe(200);
