@@ -20,4 +20,6 @@ export async function authMiddleware (request: FastifyRequest, reply: FastifyRep
     if (!user.ativo) {
         return reply.status(401).send({message: "Usuário inativo"});
     }
+
+    logged.role = user.role;
 }
