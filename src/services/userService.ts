@@ -50,6 +50,14 @@ export async function updateUserService(id: number, user: UpdateUser, userId: nu
         throw new Error("Esse role não é válido");
     }
 
+    if (id === userId) {
+        const currentUser = await listUserByIdService(id);
+
+        if (user.role !== currentUser.role) {
+            throw new Error("Você não pode alterar seu próprio cargo");
+        }
+    }
+
     let passwordHash = "";
     
     if (user.password) {
