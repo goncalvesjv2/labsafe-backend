@@ -428,19 +428,11 @@ describe("Teste de integração de usuários", () => {
             expect((await prisma.usuario.findUniqueOrThrow({ where: { id: user.id } })).role).toBe(user_role.Professor_a_);
         });
 
-        test("Admin perde o acesso administrativo com o token antigo após virar aluno", async () => {
-            const login = await app.inject({
-                method: "POST",
-                url: "/auth/login",
-                payload: { email: admin.email, password }
-            });
-            expect(login.statusCode).toBe(200);
-            const oldToken = login.json().token;
-
+        test("Admin que virou aluno não pode acessar rota administrativa com o token antigo", async () => {
             const accessBefore = await app.inject({
                 method: "GET",
                 url: "/api/users",
-                headers: { authorization: `Bearer ${oldToken}` }
+                headers: { authorization: `Bearer ${adminToken}` }
             });
             expect(accessBefore.statusCode).toBe(200);
 
@@ -458,7 +450,7 @@ describe("Teste de integração de usuários", () => {
             const accessAfter = await app.inject({
                 method: "GET",
                 url: "/api/users",
-                headers: { authorization: `Bearer ${oldToken}` }
+                headers: { authorization: `Bearer ${adminToken}` }
             });
             expect(accessAfter.statusCode).toBe(403);
             expect(accessAfter.json().message).toBe("Acesso não autorizado");
