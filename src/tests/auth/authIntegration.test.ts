@@ -66,8 +66,8 @@ describe("Testes de integração - autenticação", () => {
                 method: "POST",
                 url: "/auth/login",
                 payload: {
-                    email: "joao.teste@example.com",
-                    password: "Senha123!",
+                    email: "  JOAO.TESTE@EXAMPLE.COM  ",
+                    password: "  Senha123!  ",
                 },
             });
 
@@ -80,6 +80,29 @@ describe("Testes de integração - autenticação", () => {
                 "joao.teste@example.com",
                 "Senha123!"
             );
+        });
+
+        test("Login rejeita e-mail ou senha inválidos sem chamar a service", async () => {
+            const email = "joao.teste@example.com";
+            const password = "Senha123!";
+            const invalidBodies = [
+                {},
+                { email },
+                { password },
+                { email: "email-invalido", password },
+                { email: "   ", password },
+                { email, password: "   " },
+                { email: 123, password },
+                { email, password: 123 }
+            ];
+
+            for (const payload of invalidBodies) {
+                const response = await app.inject({ method: "POST", url: "/auth/login", payload });
+                expect(response.statusCode).toBe(400);
+                expect(response.json().message).toBe("Dados inválidos");
+                expect(response.json().errors).toEqual(expect.any(Array));
+                expect(loginServiceMock).not.toHaveBeenCalled();
+            }
         });
 
         test("Status 401 não autorizado", async () => {
