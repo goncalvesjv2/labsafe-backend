@@ -3,8 +3,8 @@ import { loginService } from "../services/authService";
 import { loginSchema } from "../schemas/authSchema";
 import { IPayload } from "../interfaces/IPayload";
 import { listUserByIdService } from "../services/userService";
-import { forgotPasswordService } from "../services/forgotService";
-import { forgotPasswordSchema } from "../schemas/passwordResetSchema";
+import { forgotPasswordService, resetPasswordService } from "../services/forgotService";
+import { forgotPasswordSchema, resetPasswordSchema } from "../schemas/passwordResetSchema";
 
 export async function loginController(request: FastifyRequest, reply: FastifyReply) {
     try {
@@ -42,6 +42,25 @@ export async function forgotPasswordController(request: FastifyRequest, reply: F
     } catch {
         request.log.error("Falha ao solicitar a recuperação de senha");
         return reply.status(500).send({ message: "Não foi possível solicitar a recuperação de senha." });
+    }
+}
+
+export async function resetPasswordController(request: FastifyRequest, reply: FastifyReply) {
+    try {
+        const result = resetPasswordSchema.safeParse(request.body);
+
+        if (!result.success) {
+            return reply.status(400).send({
+                message: "Dados inválidos",
+                errors: result.error.issues
+            });
+        }
+
+        const { token, password } = result.data;
+        const response = await resetPasswordService(token, password);
+        return reply.status(200).send(response);
+    } catch (error) {
+        return reply.status(400).send(error);
     }
 }
 
