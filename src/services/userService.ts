@@ -1,10 +1,11 @@
 import { ICreateUser } from "../interfaces/IUser";
-import { changeUserStatusRepository, createUserRepository, deleteUserRepository, listUserByEmailRepository, listUserByIdRepository, listUsersRepository, updateUserRepository } from "../repositories/userRepository";
+import { changeUserStatusRepository, createUserRepository, deleteUserRepository, listUserByEmailRepository, listUserByIdRepository, listUsersRepository, saveUserInvitationRepository, updateUserRepository } from "../repositories/userRepository";
 import { UserRole } from "../utils/user";
 import bcrypt from "bcrypt";
 import { createLogService } from "./logService";
 import type { UpdateUser } from "../schemas/userSchema";
 import { prisma } from "../database/prisma";
+import { generateInvitation } from "../utils/invitation";
 
 export async function listUsersService() {
     const users = await listUsersRepository();
@@ -28,15 +29,30 @@ export async function createUserService(user: ICreateUser, userId: number) {
         throw new Error("Usuário já possui cadastro");
     }
 
-    const createUser = await createUserRepository(user);
+    const frontendUrl = process.env.FRONTEND_URL;
 
-    await createLogService({
-        userId: userId,
-        action: "CADASTRO_USUARIO",
-        description: `Usuário com o e-mail ${createUser.email} foi cadastrado`
+    if (!frontendUrl) {
+        throw new Error("A variável FRONTEND_URL não foi definida");
+    }
+
+    const invitation = generateInvitation(frontendUrl);
+
+    return prisma.$transaction(async (transaction) => {
+        const createUser = await createUserRepository(user, transaction);
+        const savedInvitation = await saveUserInvitationRepository(createUser.id, invitation.tokenHash, invitation.expiresAt, transaction);
+
+        if (!savedInvitation) {
+            throw new Error("Convite não foi salvo");
+        }
+
+        await createLogService({
+            userId: userId,
+            action: "CADASTRO_USUARIO",
+            description: `Usuário com o e-mail ${createUser.email} foi cadastrado`
+        }, transaction);
+
+        return createUser;
     });
-
-    return createUser;
 }
 
 export async function updateUserService(id: number, user: UpdateUser, userId: number) {
