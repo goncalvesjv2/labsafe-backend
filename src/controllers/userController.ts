@@ -1,7 +1,8 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { changeUserStatusService, createUserService, deleteUserService, listUserByIdService, listUsersService, updateUserService } from "../services/userService";
+import { acceptUserInvitationService, changeUserStatusService, createUserService, deleteUserService, listUserByIdService, listUsersService, updateUserService } from "../services/userService";
 import { IPayload } from "../interfaces/IPayload";
 import { changeUserStatusSchema, userSchema, updateUserSchema } from "../schemas/userSchema";
+import { acceptInvitationSchema } from "../schemas/invitationSchema";
 
 export async function listUsersController(request: FastifyRequest, reply: FastifyReply) {
     try {
@@ -41,6 +42,25 @@ export async function createUserController(request: FastifyRequest, reply: Fasti
         const logged = request.user as IPayload;
         const createUser = await createUserService(result.data, logged.sub);
         return reply.status(201).send(createUser);
+    } catch (error) {
+        return reply.status(400).send(error);
+    }
+}
+
+export async function acceptUserInvitationController(request: FastifyRequest, reply: FastifyReply) {
+    try {
+        const result = acceptInvitationSchema.safeParse(request.body);
+
+        if (!result.success) {
+            return reply.status(400).send({
+                message: "Dados inválidos",
+                errors: result.error.issues
+            });
+        }
+
+        const { token, password } = result.data;
+        const invitation = await acceptUserInvitationService(token, password);
+        return reply.status(200).send(invitation);
     } catch (error) {
         return reply.status(400).send(error);
     }
