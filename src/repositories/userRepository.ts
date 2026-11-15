@@ -69,6 +69,19 @@ export async function changeUserStatusRepository(id: number, ativo: boolean, tra
     return updatedUser ? formatUser(updatedUser) : null;
 }
 
+export async function saveUserInvitationRepository(id: number, tokenHash: string, expiresAt: Date, transaction: Prisma.TransactionClient = prisma): Promise<IUserResponse | null> {
+    const updatedUsers = await transaction.usuario.updateManyAndReturn({
+        where: { id },
+        data: {
+            invitation_token_hash: tokenHash,
+            invitation_expires_at: expiresAt
+        }
+    });
+
+    const updatedUser = updatedUsers[0];
+    return updatedUser ? formatUser(updatedUser) : null;
+}
+
 export async function deleteUserRepository(id: number): Promise<IUserFormat> {
     return prisma.usuario.delete({
         where: { id },
