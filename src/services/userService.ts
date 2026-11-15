@@ -1,5 +1,5 @@
 import { ICreateUser } from "../interfaces/IUser";
-import { changeUserStatusRepository, createUserRepository, deleteUserRepository, listUserByEmailRepository, listUserByIdRepository, listUsersRepository, saveUserInvitationRepository, updateUserRepository } from "../repositories/userRepository";
+import { acceptUserInvitationRepository, changeUserStatusRepository, createUserRepository, deleteUserRepository, findUserByInvitationRepository, listUserByEmailRepository, listUserByIdRepository, listUsersRepository, saveUserInvitationRepository, updateUserRepository } from "../repositories/userRepository";
 import { UserRole } from "../utils/user";
 import bcrypt from "bcrypt";
 import { createLogService } from "./logService";
@@ -7,6 +7,7 @@ import type { UpdateUser } from "../schemas/userSchema";
 import { prisma } from "../database/prisma";
 import { generateInvitation } from "../utils/invitation";
 import { sendEmailService } from "./emailService";
+import { createHash } from "node:crypto";
 
 export async function listUsersService() {
     const users = await listUsersRepository();
@@ -70,6 +71,41 @@ export async function createUserService(user: ICreateUser, userId: number) {
             message: "Usuário cadastrado, mas o e-mail não foi enviado. Será necessário reenviar o convite."
         };
     }
+}
+
+export async function acceptUserInvitationService(token: string, password: string) {
+    const tokenHash = createHash("sha256").update(token).digest("hex");
+    const user = await findUserByInvitationRepository(tokenHash);
+
+    if (!user || !user.invitation_expires_at || user.invitation_expires_at <= new Date()) {
+        throw new Error("Convite inválido ou expirado");
+    }
+
+    if (!user.ativo) {
+        throw new Error("Usuário inativo");
+    }
+
+    if (user.senha !== null) {
+        throw new Error("A senha já foi definida");
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    return prisma.$transaction(async (transaction) => {
+        const updatedUser = await acceptUserInvitationRepository(tokenHash, passwordHash, transaction);
+
+        if (!updatedUser) {
+            throw new Error("Convite inválido ou expirado");
+        }
+
+        await createLogService({
+            userId: updatedUser.id,
+            action: "ACEITE_CONVITE",
+            description: "Usuário definiu a senha pelo convite"
+        }, transaction);
+
+        return { message: "Senha criada com sucesso. Faça login para acessar o sistema." };
+    });
 }
 
 export async function updateUserService(id: number, user: UpdateUser, userId: number) {
