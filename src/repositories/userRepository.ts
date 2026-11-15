@@ -31,6 +31,12 @@ export async function listUserByEmailRepository(email: string): Promise<IUserFor
     });
 }
 
+export async function findUserByInvitationRepository(tokenHash: string, transaction: Prisma.TransactionClient = prisma) {
+    return transaction.usuario.findUnique({
+        where: { invitation_token_hash: tokenHash }
+    });
+}
+
 export async function createUserRepository(user: ICreateUser, transaction: Prisma.TransactionClient = prisma): Promise<IUserResponse> {
     const newUser = await transaction.usuario.create({
         data: {
