@@ -120,6 +120,19 @@ export async function acceptUserInvitationRepository(tokenHash: string, password
     return updatedUser ? formatUser(updatedUser) : null;
 }
 
+export async function savePasswordResetRepository(id: number, tokenHash: string, expiresAt: Date, transaction: Prisma.TransactionClient = prisma): Promise<IUserResponse | null> {
+    const updatedUsers = await transaction.usuario.updateManyAndReturn({
+        where: { id, ativo: true, senha: { not: null } },
+        data: {
+            password_reset_token_hash: tokenHash,
+            password_reset_expires_at: expiresAt
+        }
+    });
+
+    const updatedUser = updatedUsers[0];
+    return updatedUser ? formatUser(updatedUser) : null;
+}
+
 export async function deleteUserRepository(id: number): Promise<IUserFormat> {
     return prisma.usuario.delete({
         where: { id },
