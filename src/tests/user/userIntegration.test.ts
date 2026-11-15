@@ -480,7 +480,7 @@ describe("Teste de integração de usuários", () => {
             expect(await prisma.logs.count({ where: { user_id: adminId, action: "REENVIO_CONVITE", description: { contains: saved.email } } })).toBe(1);
 
             const accept = await app.inject({
-                method: "POST", url: "/auth/invitations/accept",
+                method: "POST", url: "/auth/new-password",
                 payload: { token: newToken, password, confirmPassword: password }
             });
             expect(accept.statusCode).toBe(200);
@@ -492,7 +492,7 @@ describe("Teste de integração de usuários", () => {
         test("Reenvio substitui um convite ainda válido e bloqueia o link anterior", async () => {
             expect((await resendInvitation()).statusCode).toBe(200);
             const response = await app.inject({
-                method: "POST", url: "/auth/invitations/accept",
+                method: "POST", url: "/auth/new-password",
                 payload: { token: oldToken, password, confirmPassword: password }
             });
             expect(response.statusCode).toBe(400);

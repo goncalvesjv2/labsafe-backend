@@ -8,5 +8,5 @@ export const authRoutes = async (app: FastifyInstance) => {
     app.post('/login', loginController);
     app.post('/forgot-password', forgotPasswordController);
     app.post('/reset-password', resetPasswordController);
-    app.post('/invitations/accept', acceptUserInvitationController);
+    app.post('/new-password', acceptUserInvitationController);
 }
