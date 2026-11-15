@@ -485,7 +485,7 @@ describe("Teste de integração de conteúdos", () => {
         const adminLoginBody = adminLogin.json();
         expect(adminLoginBody.token).toEqual(expect.any(String));
         const adminToken = adminLoginBody.token;
-        const teacher = { name: "Professor", email: newTeacherEmail, password, role: UserRole.PROFESSOR };
+        const teacher = { name: "Professor", email: newTeacherEmail, role: UserRole.PROFESSOR };
         const teacherResponse = await app.inject({
             method: "POST",
             url: "/api/users",
@@ -502,6 +502,11 @@ describe("Teste de integração de conteúdos", () => {
             name: teacher.name,
             email: newTeacherEmail,
             role: UserRole.PROFESSOR
+        });
+        // Prepara a senha da conta usada neste cenário de acesso aos conteúdos.
+        await prisma.usuario.update({
+            where: { id: createdTeacher.id },
+            data: { senha: await bcrypt.hash(password, 10) }
         });
         const teacherLogin = await app.inject({
             method: "POST",

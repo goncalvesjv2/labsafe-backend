@@ -65,7 +65,7 @@ describe("Teste de integração de usuários", () => {
     }, 30000);
 
     test("deve criar um usuário salvando o e-mail em minúsculas e sem espaços nas extremidades", async () => {
-        const user = { name: "Aluno Teste", email: `  ${email.toUpperCase()}  `, password, role: UserRole.ALUNO };
+        const user = { name: "Aluno Teste", email: `  ${email.toUpperCase()}  `, role: UserRole.ALUNO };
 
         const response = await app.inject({
             method: "POST",
@@ -84,13 +84,11 @@ describe("Teste de integração de usuários", () => {
         expect(body).not.toHaveProperty("password");
         const savedUser = await prisma.usuario.findUniqueOrThrow({ where: { email } });
         expect(savedUser).toMatchObject({ id: body.id, name: user.name, email, role: user_role.Aluno_a_ });
-        expect(savedUser.senha).not.toBe(password);
-        assert.ok(savedUser.senha);
-        expect(await bcrypt.compare(password, savedUser.senha)).toBe(true);
+        expect(savedUser.senha).toBeNull();
     }, 30000);
 
     test("deve listar usuários e encontrar o usuário cadastrado", async () => {
-        const user = { name: "Aluno Listagem", email: listEmail, password, role: UserRole.ALUNO };
+        const user = { name: "Aluno Listagem", email: listEmail, role: UserRole.ALUNO };
 
         const createResponse = await app.inject({
             method: "POST",
@@ -120,7 +118,7 @@ describe("Teste de integração de usuários", () => {
     }, 30000);
 
     test("deve consultar um usuário pelo ID", async () => {
-        const user = { name: "Aluno Consulta", email: idEmail, password, role: UserRole.ALUNO };
+        const user = { name: "Aluno Consulta", email: idEmail, role: UserRole.ALUNO };
         const createResponse = await app.inject({
             method: "POST",
             url: "/api/users",
@@ -150,7 +148,7 @@ describe("Teste de integração de usuários", () => {
     }, 30000);
 
     test("deve atualizar um usuário salvando o e-mail em minúsculas e sem espaços nas extremidades", async () => {
-        const user = { name: "Aluno Antes", email: updateEmail, password, role: UserRole.ALUNO };
+        const user = { name: "Aluno Antes", email: updateEmail, role: UserRole.ALUNO };
 
         const createResponse = await app.inject({
             method: "POST",
@@ -207,7 +205,7 @@ describe("Teste de integração de usuários", () => {
     }, 30000);
 
     test("deve excluir um usuário", async () => {
-        const user = { name: "Aluno Exclusão", email: deleteEmail, password, role: UserRole.ALUNO };
+        const user = { name: "Aluno Exclusão", email: deleteEmail, role: UserRole.ALUNO };
 
         const createResponse = await app.inject({
             method: "POST",
@@ -234,7 +232,7 @@ describe("Teste de integração de usuários", () => {
     }, 30000);
 
     test("deve rejeitar cadastro com e-mail já utilizado mesmo com letras maiúsculas e espaços", async () => {
-        const user = { name: "Aluno Original", email: duplicateEmail, password, role: UserRole.ALUNO };
+        const user = { name: "Aluno Original", email: duplicateEmail, role: UserRole.ALUNO };
         const createResponse = await app.inject({
             method: "POST",
             url: "/api/users",
@@ -246,7 +244,7 @@ describe("Teste de integração de usuários", () => {
         });
         expect(createResponse.statusCode).toBe(201);
         const createdUser = createResponse.json();
-        const duplicateUser = { name: "Outro Aluno", email: `  ${duplicateEmail.toUpperCase()}  `, password, role: UserRole.ALUNO };
+        const duplicateUser = { name: "Outro Aluno", email: `  ${duplicateEmail.toUpperCase()}  `, role: UserRole.ALUNO };
         const response = await app.inject({
             method: "POST",
             url: "/api/users",
@@ -266,7 +264,7 @@ describe("Teste de integração de usuários", () => {
     }, 30000);
 
     test("deve rejeitar cadastro com e-mail inválido", async () => {
-        const user = { name: "Aluno Inválido", email: invalidEmail, password, role: UserRole.ALUNO };
+        const user = { name: "Aluno Inválido", email: invalidEmail, role: UserRole.ALUNO };
 
         const response = await app.inject({
             method: "POST",
@@ -290,7 +288,7 @@ describe("Teste de integração de usuários", () => {
     }, 30000);
 
     test("deve retornar erro ao consultar um usuário inexistente", async () => {
-        const user = { name: "Aluno Temporário", email: missingEmail, password, role: UserRole.ALUNO };
+        const user = { name: "Aluno Temporário", email: missingEmail, role: UserRole.ALUNO };
         const createResponse = await app.inject({
             method: "POST",
             url: "/api/users",

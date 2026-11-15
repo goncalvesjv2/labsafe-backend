@@ -31,12 +31,12 @@ export async function listUserByEmailRepository(email: string): Promise<IUserFor
     });
 }
 
-export async function createUserRepository(user: ICreateUser, password: string): Promise<IUserResponse> {
-    const newUser = await prisma.usuario.create({
+export async function createUserRepository(user: ICreateUser, transaction: Prisma.TransactionClient = prisma): Promise<IUserResponse> {
+    const newUser = await transaction.usuario.create({
         data: {
             name: user.name,
             email: user.email,
-            senha: password,
+            senha: null,
             role: role[user.role],
         },
     });

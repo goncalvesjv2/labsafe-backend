@@ -6,7 +6,7 @@ describe("createUserService", () => {
         jest.resetModules();
     });
 
-    test("deve cadastrar um usuário com sucesso", async () => {
+    test("deve cadastrar um usuário sem receber senha", async () => {
         const createUserRepository = jest.fn<(...args: any[]) => Promise<any>>();
         const listUserByEmailRepository = jest.fn<(...args: any[]) => Promise<any>>();
         const createLogService = jest.fn<(...args: any[]) => Promise<any>>();
@@ -29,7 +29,6 @@ describe("createUserService", () => {
         const user = {
             name: "João",
             email: "joao.teste@example.com",
-            password: "Senha123!",
             role: UserRole.ALUNO,
         };
 
@@ -52,6 +51,7 @@ describe("createUserService", () => {
         expect(result).toEqual(createdUser);
         expect(listUserByEmailRepository).toHaveBeenCalledWith(user.email);
         expect(createUserRepository).toHaveBeenCalledTimes(1);
+        expect(createUserRepository).toHaveBeenCalledWith(user);
         expect(createLogService).toHaveBeenCalledWith({
             userId,
             action: "CADASTRO_USUARIO",
@@ -82,7 +82,6 @@ describe("createUserService", () => {
         const user = {
             name: "João",
             email: "joao.teste@example.com",
-            password: "Senha123!",
             role: UserRole.ALUNO,
         };
 

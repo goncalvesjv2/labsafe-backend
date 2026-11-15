@@ -12,14 +12,16 @@ describe("API de usuários", () => {
     let adminId: number | undefined;
     let email: string;
     let token: string;
+    let passwordHash: string;
 
     beforeAll(async () => {
         await app.ready();
+        passwordHash = await bcrypt.hash("SenhaTeste123!", 10);
         const admin = await prisma.usuario.create({
             data: {
                 name: "Administrador Teste E2E",
                 email: "admin.e2e." + Date.now() + "@example.com",
-                senha: await bcrypt.hash("SenhaTeste123!", 10),
+                senha: passwordHash,
                 role: user_role.Admin
             }
         });
@@ -38,7 +40,6 @@ describe("API de usuários", () => {
             payload: {
                 name: "Usuário E2E",
                 email,
-                password: "  SenhaTeste123!  ",
                 role: UserRole.ALUNO
             }
         });
@@ -74,7 +75,7 @@ describe("API de usuários", () => {
         }
     });
 
-    test("deve cadastrar, consultar e salvar o hash da senha sem espaços externos", async () => {
+    test("deve cadastrar e consultar uma conta sem senha e impedir o login", async () => {
         const response = await app.inject({
             method: "GET",
             url: "/api/users/" + userId,
@@ -84,13 +85,18 @@ describe("API de usuários", () => {
         expect(response.json()).toMatchObject({ id: userId, email, name: "Usuário E2E" });
         expect(response.json()).not.toHaveProperty("senha");
         const savedUser = await prisma.usuario.findUniqueOrThrow({ where: { id: userId } });
-        assert.ok(savedUser.senha);
-        expect(await bcrypt.compare("SenhaTeste123!", savedUser.senha)).toBe(true);
-        expect(await bcrypt.compare("  SenhaTeste123!  ", savedUser.senha)).toBe(false);
+        expect(savedUser.senha).toBeNull();
+
+        const login = await app.inject({
+            method: "POST", url: "/auth/login",
+            payload: { email, password: "SenhaTeste123!" }
+        });
+        expect(login.statusCode).toBe(401);
+        expect(login.json()).not.toHaveProperty("token");
     });
 
     test("deve atualizar nome, e-mail e cargo sem trocar a senha", async () => {
-        const beforeUpdate = await prisma.usuario.findUniqueOrThrow({ where: { id: userId } });
+        const beforeUpdate = await prisma.usuario.update({ where: { id: userId }, data: { senha: passwordHash } });
         const updatedEmail = "ana." + Date.now() + "@example.com";
 
         const response = await app.inject({
@@ -109,6 +115,7 @@ describe("API de usuários", () => {
     });
 
     test("deve trocar a senha e permitir login", async () => {
+        await prisma.usuario.update({ where: { id: userId }, data: { senha: passwordHash } });
         const updatedEmail = "ana." + Date.now() + "@example.com";
         const response = await app.inject({
             method: "PATCH",

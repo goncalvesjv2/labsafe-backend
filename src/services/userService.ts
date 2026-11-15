@@ -28,9 +28,7 @@ export async function createUserService(user: ICreateUser, userId: number) {
         throw new Error("Usuário já possui cadastro");
     }
 
-    const passwordHash = await bcrypt.hash(user.password, 10);
-
-    const createUser = await createUserRepository(user, passwordHash);
+    const createUser = await createUserRepository(user);
 
     await createLogService({
         userId: userId,

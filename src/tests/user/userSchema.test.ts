@@ -6,11 +6,10 @@ describe("Validação de cadastro de usuário", () => {
     const user = {
         name: "João",
         email: "joao@example.com",
-        password: "Senha123!",
         role: UserRole.ALUNO
     };
 
-    test("deve aceitar um usuário válido", () => {
+    test("deve aceitar cadastro com nome, e-mail e cargo sem senha", () => {
         const result = userSchema.safeParse(user);
         expect(result.success).toBe(true);
     });
@@ -30,28 +29,37 @@ describe("Validação de cadastro de usuário", () => {
         expect(result.success).toBe(false);
     });
 
+});
+
+describe("Validação de senha na atualização de usuário", () => {
+    const user = {
+        name: "João",
+        email: "joao@example.com",
+        role: UserRole.ALUNO
+    };
+
     test("deve rejeitar senha curta", () => {
-        const result = userSchema.safeParse({ ...user, password: "123" });
+        const result = updateUserSchema.safeParse({ ...user, password: "123" });
         expect(result.success).toBe(false);
     });
 
     test("deve remover espaços externos e manter os espaços internos da senha", () => {
-        const result = userSchema.parse({ ...user, password: "  Senha 123!  " });
+        const result = updateUserSchema.parse({ ...user, password: "  Senha 123!  " });
         expect(result.password).toBe("Senha 123!");
     });
 
     test("deve aceitar uma senha com oito caracteres após o trim", () => {
-        const result = userSchema.parse({ ...user, password: "  12345678  " });
+        const result = updateUserSchema.parse({ ...user, password: "  12345678  " });
         expect(result.password).toBe("12345678");
     });
 
     test("deve rejeitar senha que fica curta após remover os espaços", () => {
-        const result = userSchema.safeParse({ ...user, password: "  1234567  " });
+        const result = updateUserSchema.safeParse({ ...user, password: "  1234567  " });
         expect(result.success).toBe(false);
     });
 
     test("deve rejeitar senha formada somente por espaços", () => {
-        const result = userSchema.safeParse({ ...user, password: "          " });
+        const result = updateUserSchema.safeParse({ ...user, password: "          " });
         expect(result.success).toBe(false);
     });
 });
@@ -66,7 +74,6 @@ describe("Validação de atualização de usuário", () => {
     test("deve permitir atualizar sem enviar senha", () => {
         const result = updateUserSchema.parse(user);
         expect(result).toEqual(user);
-        expect(userSchema.safeParse(user).success).toBe(false);
     });
 
     test("deve remover espaços do nome e da nova senha", () => {
