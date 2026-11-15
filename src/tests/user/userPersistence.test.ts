@@ -75,29 +75,28 @@ describe("updateUserRepository", () => {
 
     test("deve manter a senha existente e esconder o hash da resposta", async () => {
         const { updateUserRepository } = await import("../../repositories/userRepository");
-        const result = await updateUserRepository(7, user, "");
+        const result = await updateUserRepository(7, user);
         expect(update).toHaveBeenCalledWith({
             where: { id: 7 },
             data: {
                 name: user.name,
                 email: user.email,
-                role: user_role.Professor_a_,
-                senha: undefined
+                role: user_role.Professor_a_
             }
         });
         expect(result).toEqual({ id: 7, ...user, ativo: true });
     });
 
-    test("deve enviar o novo hash e converter o cargo para o Prisma", async () => {
+    test("deve atualizar apenas nome, e-mail e cargo mesmo recebendo campos extras", async () => {
         const { updateUserRepository } = await import("../../repositories/userRepository");
-        await updateUserRepository(7, user, "novo-hash");
+        const input = { ...user, senha: "novo-hash", password: "NovaSenha123!", ativo: false };
+        await updateUserRepository(7, input);
         expect(update).toHaveBeenCalledWith({
             where: { id: 7 },
             data: {
                 name: user.name,
                 email: user.email,
-                role: user_role.Professor_a_,
-                senha: "novo-hash"
+                role: user_role.Professor_a_
             }
         });
     });
@@ -105,7 +104,7 @@ describe("updateUserRepository", () => {
     test("deve retornar null quando o usuário não existe", async () => {
         const { updateUserRepository } = await import("../../repositories/userRepository");
         update.mockResolvedValue([]);
-        const result = await updateUserRepository(7, user, "");
+        const result = await updateUserRepository(7, user);
         expect(result).toBeNull();
     });
 
@@ -117,6 +116,6 @@ describe("updateUserRepository", () => {
             clientVersion: Prisma.prismaVersion.client
         });
         update.mockRejectedValue(error);
-        await expect(updateUserRepository(7, user, "")).rejects.toBe(error);
+        await expect(updateUserRepository(7, user)).rejects.toBe(error);
     });
 });

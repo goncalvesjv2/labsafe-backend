@@ -31,39 +31,6 @@ describe("Validação de cadastro de usuário", () => {
 
 });
 
-describe("Validação de senha na atualização de usuário", () => {
-    const user = {
-        name: "João",
-        email: "joao@example.com",
-        role: UserRole.ALUNO
-    };
-
-    test("deve rejeitar senha curta", () => {
-        const result = updateUserSchema.safeParse({ ...user, password: "123" });
-        expect(result.success).toBe(false);
-    });
-
-    test("deve remover espaços externos e manter os espaços internos da senha", () => {
-        const result = updateUserSchema.parse({ ...user, password: "  Senha 123!  " });
-        expect(result.password).toBe("Senha 123!");
-    });
-
-    test("deve aceitar uma senha com oito caracteres após o trim", () => {
-        const result = updateUserSchema.parse({ ...user, password: "  12345678  " });
-        expect(result.password).toBe("12345678");
-    });
-
-    test("deve rejeitar senha que fica curta após remover os espaços", () => {
-        const result = updateUserSchema.safeParse({ ...user, password: "  1234567  " });
-        expect(result.success).toBe(false);
-    });
-
-    test("deve rejeitar senha formada somente por espaços", () => {
-        const result = updateUserSchema.safeParse({ ...user, password: "          " });
-        expect(result.success).toBe(false);
-    });
-});
-
 describe("Validação de atualização de usuário", () => {
     const user = {
         name: "Ana",
@@ -71,20 +38,20 @@ describe("Validação de atualização de usuário", () => {
         role: UserRole.ALUNO
     };
 
-    test("deve permitir atualizar sem enviar senha", () => {
+    test("deve aceitar somente nome, e-mail e cargo", () => {
         const result = updateUserSchema.parse(user);
         expect(result).toEqual(user);
     });
 
-    test("deve remover espaços do nome e da nova senha", () => {
+    test("deve remover espaços do nome e normalizar o e-mail", () => {
         const result = updateUserSchema.parse({
             ...user,
             name: "  Ana  ",
-            password: "  NovaSenha123!  "
+            email: "  ANA@EXAMPLE.COM  "
         });
 
         expect(result.name).toBe("Ana");
-        expect(result.password).toBe("NovaSenha123!");
+        expect(result.email).toBe("ana@example.com");
     });
 
     test("deve continuar exigindo nome, e-mail e cargo", () => {
@@ -93,8 +60,10 @@ describe("Validação de atualização de usuário", () => {
         expect(updateUserSchema.safeParse({ name: user.name, email: user.email }).success).toBe(false);
     });
 
-    test("deve rejeitar uma nova senha vazia", () => {
-        const result = updateUserSchema.safeParse({ ...user, password: "" });
-        expect(result.success).toBe(false);
+    test("deve rejeitar senha e status na edição do usuário", () => {
+        for (const extraField of [{ password: "NovaSenha123!" }, { senha: "novo-hash" }, { ativo: false }]) {
+            const result = updateUserSchema.safeParse({ ...user, ...extraField });
+            expect(result.success).toBe(false);
+        }
     });
 });

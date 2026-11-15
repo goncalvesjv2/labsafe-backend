@@ -164,7 +164,7 @@ describe("updateUserService", () => {
     };
     const savedUser = { id: 7, ...user, ativo: true };
 
-    const updateUserRepository = jest.fn<(id: number, user: unknown, password: string) => Promise<unknown>>();
+    const updateUserRepository = jest.fn<(id: number, user: unknown) => Promise<unknown>>();
     const createLogService = jest.fn<(log: unknown) => Promise<unknown>>();
     const hashPassword = jest.fn<(password: string, rounds: number) => Promise<string>>();
 
@@ -182,7 +182,6 @@ describe("updateUserService", () => {
         }));
 
         updateUserRepository.mockResolvedValue(savedUser);
-        hashPassword.mockResolvedValue("hash-da-nova-senha");
     });
 
     afterEach(() => {
@@ -199,19 +198,7 @@ describe("updateUserService", () => {
 
         expect(result).toEqual(savedUser);
         expect(hashPassword).not.toHaveBeenCalled();
-        expect(updateUserRepository).toHaveBeenCalledWith(7, user, "");
-        expect(createLogService).toHaveBeenCalledTimes(1);
-    });
-
-    test("deve gerar o hash quando receber uma nova senha", async () => {
-        const { updateUserService } = await import("../../services/userService");
-        // O controller já entregou a senha tratada pelo schema.
-        const input = { ...user, password: "NovaSenha123!" };
-
-        await updateUserService(7, input, 10);
-
-        expect(hashPassword).toHaveBeenCalledWith("NovaSenha123!", 10);
-        expect(updateUserRepository).toHaveBeenCalledWith(7, input, "hash-da-nova-senha");
+        expect(updateUserRepository).toHaveBeenCalledWith(7, user);
         expect(createLogService).toHaveBeenCalledTimes(1);
     });
 

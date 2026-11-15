@@ -723,7 +723,7 @@ describe("Teste de integração de usuários", () => {
                 const response = await app.inject({
                     method: "PATCH", url: `/api/users/${admin.id}`,
                     headers: { authorization: `Bearer ${adminToken}` },
-                    payload: { name: "Outro nome", email: admin.email, password: "OutraSenha123!", role }
+                    payload: { name: "Outro nome", email: admin.email, role }
                 });
 
                 expect(response.statusCode).toBe(400);
@@ -733,12 +733,12 @@ describe("Teste de integração de usuários", () => {
             }
         });
 
-        test("Admin pode editar nome, e-mail e senha sem mudar o próprio cargo", async () => {
+        test("Admin pode editar nome e e-mail mantendo a senha e o próprio cargo", async () => {
             const newEmail = `novo.${randomUUID()}@example.com`;
             const response = await app.inject({
                 method: "PATCH", url: `/api/users/${admin.id}`,
                 headers: { authorization: `Bearer ${adminToken}` },
-                payload: { name: "Admin Atualizado", email: newEmail, password: "NovaSenha123!", role: UserRole.ADMIN }
+                payload: { name: "Admin Atualizado", email: newEmail, role: UserRole.ADMIN }
             });
 
             expect(response.statusCode).toBe(200);
@@ -747,8 +747,7 @@ describe("Teste de integração de usuários", () => {
             expect(savedAdmin.name).toBe("Admin Atualizado");
             expect(savedAdmin.email).toBe(newEmail);
             expect(savedAdmin.role).toBe(user_role.Admin);
-            assert.ok(savedAdmin.senha);
-            expect(await bcrypt.compare("NovaSenha123!", savedAdmin.senha)).toBe(true);
+            expect(savedAdmin.senha).toBe(admin.senha);
         });
 
         test("Admin pode alterar o cargo de outro usuário", async () => {

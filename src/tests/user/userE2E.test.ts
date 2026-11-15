@@ -6,7 +6,6 @@ import { generateToken } from "../../utils/token";
 import { UserRole } from "../../utils/user";
 import { user_role } from "../../generated/prisma/enums";
 import bcrypt from "bcrypt";
-import assert from "node:assert/strict";
 
 jest.mock("../../services/emailService", () => ({
     sendEmailService: jest.fn().mockResolvedValue({ messageId: "email-teste" })
@@ -119,8 +118,8 @@ describe("API de usuários", () => {
         expect(savedUser.senha).toBe(beforeUpdate.senha);
     });
 
-    test("deve trocar a senha e permitir login", async () => {
-        await prisma.usuario.update({ where: { id: userId }, data: { senha: passwordHash } });
+    test("Admin não pode trocar a senha pela edição do usuário", async () => {
+        const beforeUpdate = await prisma.usuario.update({ where: { id: userId }, data: { senha: passwordHash } });
         const updatedEmail = "ana." + Date.now() + "@example.com";
         const response = await app.inject({
             method: "PATCH",
@@ -132,28 +131,26 @@ describe("API de usuários", () => {
             }
         });
 
-        expect(response.statusCode).toBe(200);
-        expect(response.json()).not.toHaveProperty("senha");
-        expect(response.json()).not.toHaveProperty("password");
+        expect(response.statusCode).toBe(400);
+        expect(response.json().message).toBe("Dados inválidos");
         const savedUser = await prisma.usuario.findUniqueOrThrow({ where: { id: userId } });
-        expect(savedUser.name).toBe("Ana");
-        expect(savedUser.email).toBe(updatedEmail);
-        expect(savedUser.senha).not.toBe("NovaSenhaTeste123!");
-        assert.ok(savedUser.senha);
-        expect(await bcrypt.compare("NovaSenhaTeste123!", savedUser.senha)).toBe(true);
-        expect(await bcrypt.compare("  NovaSenhaTeste123!  ", savedUser.senha)).toBe(false);
-        expect(await bcrypt.compare("SenhaTeste123!", savedUser.senha)).toBe(false);
+        expect(savedUser).toEqual(beforeUpdate);
 
         const loginResponse = await app.inject({
             method: "POST",
             url: "/auth/login",
-            payload: { email: updatedEmail, password: "  NovaSenhaTeste123!  " }
+            payload: { email, password: "SenhaTeste123!" }
         });
         expect(loginResponse.statusCode).toBe(200);
         expect(loginResponse.json()).toHaveProperty("token");
+        const rejectedLogin = await app.inject({
+            method: "POST", url: "/auth/login",
+            payload: { email, password: "NovaSenhaTeste123!" }
+        });
+        expect(rejectedLogin.statusCode).toBe(401);
     });
 
-    test("deve rejeitar senha curta após o trim sem alterar o usuário", async () => {
+    test("Admin não pode alterar o status pela edição do usuário", async () => {
         const beforeUpdate = await prisma.usuario.findUniqueOrThrow({ where: { id: userId } });
 
         const response = await app.inject({
@@ -162,7 +159,7 @@ describe("API de usuários", () => {
             headers: { authorization: "Bearer " + token },
             payload: {
                 name: "Não deve ser salvo", email, role: UserRole.ALUNO,
-                password: "  1234567  "
+                ativo: false
             }
         });
 
