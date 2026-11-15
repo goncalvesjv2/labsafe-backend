@@ -1,5 +1,5 @@
 import { ICreateUser } from "../interfaces/IUser";
-import { acceptUserInvitationRepository, changeUserStatusRepository, createUserRepository, deleteUserRepository, findUserByInvitationRepository, listUserByEmailRepository, listUserByIdRepository, listUsersRepository, saveUserInvitationRepository, updateUserRepository } from "../repositories/userRepository";
+import { acceptUserInvitationRepository, changeUserStatusRepository, createUserRepository, deleteUserRepository, findUserByInvitationRepository, listUserByEmailRepository, listUserByIdRepository, listUsersRepository, resendUserInvitationRepository, saveUserInvitationRepository, updateUserRepository } from "../repositories/userRepository";
 import { UserRole } from "../utils/user";
 import bcrypt from "bcrypt";
 import { createLogService } from "./logService";
@@ -69,6 +69,63 @@ export async function createUserService(user: ICreateUser, userId: number) {
             ...createdUser,
             invitationSent: false,
             message: "Usuário cadastrado, mas o e-mail não foi enviado. Será necessário reenviar o convite."
+        };
+    }
+}
+
+export async function resendUserInvitationService(id: number, userId: number) {
+    const frontendUrl = process.env.FRONTEND_URL;
+
+    if (!frontendUrl) {
+        throw new Error("A variável FRONTEND_URL não foi definida");
+    }
+
+    const invitation = generateInvitation(frontendUrl);
+
+    const invitedUser = await prisma.$transaction(async (transaction) => {
+        const admin = await listUserByIdRepository(userId, transaction);
+
+        if (!admin || !admin.ativo || admin.role !== UserRole.ADMIN) {
+            throw new Error("Somente administradores ativos podem reenviar convites");
+        }
+
+        const user = await listUserByIdRepository(id, transaction);
+
+        if (!user) {
+            throw new Error("Usuário não encontrado");
+        }
+
+        if (!user.ativo) {
+            throw new Error("Usuário inativo");
+        }
+
+        const updatedUser = await resendUserInvitationRepository(id, invitation.tokenHash, invitation.expiresAt, transaction);
+
+        if (!updatedUser) {
+            throw new Error("O convite só pode ser reenviado para usuários ativos sem senha definida");
+        }
+
+        await createLogService({
+            userId,
+            action: "REENVIO_CONVITE",
+            description: `Novo convite gerado para o usuário com o e-mail ${updatedUser.email}`
+        }, transaction);
+
+        return updatedUser;
+    });
+
+    try {
+        await sendEmailService({
+            to: invitedUser.email,
+            subject: "LabSafe - Crie sua senha",
+            text: `Olá, ${invitedUser.name}!\n\nCrie sua senha pelo novo link:\n${invitation.invitationUrl}\n\nO convite é válido por 5 minutos a partir de sua geração. O link anterior não é mais válido.`
+        });
+
+        return { invitationSent: true, message: "Convite reenviado com sucesso." };
+    } catch {
+        return {
+            invitationSent: false,
+            message: "Novo convite salvo, mas o e-mail não foi enviado. Será necessário reenviar o convite."
         };
     }
 }

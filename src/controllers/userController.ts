@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { acceptUserInvitationService, changeUserStatusService, createUserService, deleteUserService, listUserByIdService, listUsersService, updateUserService } from "../services/userService";
+import { acceptUserInvitationService, changeUserStatusService, createUserService, deleteUserService, listUserByIdService, listUsersService, resendUserInvitationService, updateUserService } from "../services/userService";
 import { IPayload } from "../interfaces/IPayload";
 import { changeUserStatusSchema, userSchema, updateUserSchema } from "../schemas/userSchema";
 import { acceptInvitationSchema } from "../schemas/invitationSchema";
@@ -42,6 +42,22 @@ export async function createUserController(request: FastifyRequest, reply: Fasti
         const logged = request.user as IPayload;
         const createUser = await createUserService(result.data, logged.sub);
         return reply.status(201).send(createUser);
+    } catch (error) {
+        return reply.status(400).send(error);
+    }
+}
+
+export async function resendUserInvitationController(request: FastifyRequest<{Params: {id: string}}>, reply: FastifyReply) {
+    try {
+        const id = Number(request.params.id);
+
+        if (!Number.isSafeInteger(id) || id <= 0) {
+            return reply.status(400).send({ message: "ID inválido" });
+        }
+
+        const logged = request.user as IPayload;
+        const invitation = await resendUserInvitationService(id, logged.sub);
+        return reply.status(200).send(invitation);
     } catch (error) {
         return reply.status(400).send(error);
     }
