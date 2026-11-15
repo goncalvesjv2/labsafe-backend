@@ -1,6 +1,10 @@
-import { listUserByEmailRepository, savePasswordResetRepository } from "../repositories/userRepository";
+import { findUserByPasswordResetRepository, listUserByEmailRepository, resetPasswordRepository, savePasswordResetRepository } from "../repositories/userRepository";
 import { generatePasswordReset } from "../utils/passwordReset";
 import { sendEmailService } from "./emailService";
+import { createHash } from "node:crypto";
+import bcrypt from "bcrypt";
+import { prisma } from "../database/prisma";
+import { createLogService } from "./logService";
 
 export async function forgotPasswordService(email: string) {
     const response = {
@@ -37,4 +41,39 @@ export async function forgotPasswordService(email: string) {
     }
 
     return response;
+}
+
+export async function resetPasswordService(token: string, password: string) {
+    const tokenHash = createHash("sha256").update(token).digest("hex");
+    const user = await findUserByPasswordResetRepository(tokenHash);
+
+    if (!user || !user.password_reset_expires_at || user.password_reset_expires_at <= new Date()) {
+        throw new Error("Link de recuperação inválido ou expirado");
+    }
+
+    if (!user.ativo) {
+        throw new Error("Usuário inativo");
+    }
+
+    if (!user.senha) {
+        throw new Error("A senha ainda não foi definida");
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    return prisma.$transaction(async (transaction) => {
+        const updatedUser = await resetPasswordRepository(tokenHash, passwordHash, transaction);
+
+        if (!updatedUser) {
+            throw new Error("Link de recuperação inválido ou expirado");
+        }
+
+        await createLogService({
+            userId: updatedUser.id,
+            action: "REDEFINICAO_SENHA",
+            description: "Usuário redefiniu a senha pela recuperação"
+        }, transaction);
+
+        return { message: "Senha redefinida com sucesso. Faça login para acessar o sistema." };
+    });
 }

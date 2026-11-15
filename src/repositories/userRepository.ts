@@ -37,6 +37,12 @@ export async function findUserByInvitationRepository(tokenHash: string, transact
     });
 }
 
+export async function findUserByPasswordResetRepository(tokenHash: string, transaction: Prisma.TransactionClient = prisma) {
+    return transaction.usuario.findUnique({
+        where: { password_reset_token_hash: tokenHash }
+    });
+}
+
 export async function createUserRepository(user: ICreateUser, transaction: Prisma.TransactionClient = prisma): Promise<IUserResponse> {
     const newUser = await transaction.usuario.create({
         data: {
@@ -126,6 +132,25 @@ export async function savePasswordResetRepository(id: number, tokenHash: string,
         data: {
             password_reset_token_hash: tokenHash,
             password_reset_expires_at: expiresAt
+        }
+    });
+
+    const updatedUser = updatedUsers[0];
+    return updatedUser ? formatUser(updatedUser) : null;
+}
+
+export async function resetPasswordRepository(tokenHash: string, passwordHash: string, transaction: Prisma.TransactionClient = prisma): Promise<IUserResponse | null> {
+    const updatedUsers = await transaction.usuario.updateManyAndReturn({
+        where: {
+            password_reset_token_hash: tokenHash,
+            password_reset_expires_at: { gt: new Date() },
+            ativo: true,
+            senha: { not: null }
+        },
+        data: {
+            senha: passwordHash,
+            password_reset_token_hash: null,
+            password_reset_expires_at: null
         }
     });
 
