@@ -2,7 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { acceptUserInvitationService, changeUserStatusService, createUserService, deleteUserService, listUserByIdService, listUsersService, resendUserInvitationService, updateUserService } from "../services/userService";
 import { IPayload } from "../interfaces/IPayload";
 import { changeUserStatusSchema, userSchema, updateUserSchema } from "../schemas/userSchema";
-import { acceptInvitationSchema } from "../schemas/invitationSchema";
+import { resetPasswordSchema } from "../schemas/passwordResetSchema";
 
 export async function listUsersController(request: FastifyRequest, reply: FastifyReply) {
     try {
@@ -65,7 +65,7 @@ export async function resendUserInvitationController(request: FastifyRequest<{Pa
 
 export async function acceptUserInvitationController(request: FastifyRequest, reply: FastifyReply) {
     try {
-        const result = acceptInvitationSchema.safeParse(request.body);
+        const result = resetPasswordSchema.safeParse(request.body);
 
         if (!result.success) {
             return reply.status(400).send({
