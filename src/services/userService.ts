@@ -6,6 +6,7 @@ import { createLogService } from "./logService";
 import type { UpdateUser } from "../schemas/userSchema";
 import { prisma } from "../database/prisma";
 import { generateInvitation } from "../utils/invitation";
+import { sendEmailService } from "./emailService";
 
 export async function listUsersService() {
     const users = await listUsersRepository();
@@ -37,7 +38,7 @@ export async function createUserService(user: ICreateUser, userId: number) {
 
     const invitation = generateInvitation(frontendUrl);
 
-    return prisma.$transaction(async (transaction) => {
+    const createdUser = await prisma.$transaction(async (transaction) => {
         const createUser = await createUserRepository(user, transaction);
         const savedInvitation = await saveUserInvitationRepository(createUser.id, invitation.tokenHash, invitation.expiresAt, transaction);
 
@@ -53,6 +54,22 @@ export async function createUserService(user: ICreateUser, userId: number) {
 
         return createUser;
     });
+
+    try {
+        await sendEmailService({
+            to: createdUser.email,
+            subject: "LabSafe - Crie sua senha",
+            text: `Olá, ${createdUser.name}!\n\nSua conta no LabSafe foi cadastrada. Crie sua senha pelo link:\n${invitation.invitationUrl}\n\nO convite é válido por 5 minutos a partir de sua geração.`
+        });
+
+        return { ...createdUser, invitationSent: true };
+    } catch {
+        return {
+            ...createdUser,
+            invitationSent: false,
+            message: "Usuário cadastrado, mas o e-mail não foi enviado. Será necessário reenviar o convite."
+        };
+    }
 }
 
 export async function updateUserService(id: number, user: UpdateUser, userId: number) {
