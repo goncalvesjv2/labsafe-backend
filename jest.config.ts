@@ -9,6 +9,7 @@ if (!testDatabaseUrl || new URL(testDatabaseUrl).pathname !== "/labsafe_test") {
 }
 
 process.env.DATABASE_URL = testDatabaseUrl;
+process.env.FRONTEND_URL = "http://localhost:5173";
 
 const config: Config = {
   clearMocks: true,

@@ -67,6 +67,7 @@ describe("Teste de integração de usuários", () => {
     test("deve criar um usuário salvando o e-mail em minúsculas e sem espaços nas extremidades", async () => {
         const user = { name: "Aluno Teste", email: `  ${email.toUpperCase()}  `, role: UserRole.ALUNO };
 
+        const before = Date.now();
         const response = await app.inject({
             method: "POST",
             url: "/api/users",
@@ -76,16 +77,44 @@ describe("Teste de integração de usuários", () => {
             },
             payload: user
         });
+        const after = Date.now();
         expect(response.statusCode).toBe(201);
         expect(response.headers["content-type"]).toContain("application/json");
         const body = response.json();
         expect(body).toMatchObject({ id: expect.any(Number), name: user.name, email, role: user.role });
         expect(body).not.toHaveProperty("senha");
         expect(body).not.toHaveProperty("password");
+        expect(body).not.toHaveProperty("token");
+        expect(body).not.toHaveProperty("tokenHash");
+        expect(body).not.toHaveProperty("invitationUrl");
+        expect(body).not.toHaveProperty("invitation_token_hash");
+        expect(body).not.toHaveProperty("invitation_expires_at");
         const savedUser = await prisma.usuario.findUniqueOrThrow({ where: { email } });
         expect(savedUser).toMatchObject({ id: body.id, name: user.name, email, role: user_role.Aluno_a_ });
         expect(savedUser.senha).toBeNull();
+        expect(savedUser.invitation_token_hash).toMatch(/^[a-f0-9]{64}$/);
+        assert.ok(savedUser.invitation_expires_at);
+        expect(savedUser.invitation_expires_at.getTime()).toBeGreaterThanOrEqual(before + 5 * 60 * 1000);
+        expect(savedUser.invitation_expires_at.getTime()).toBeLessThanOrEqual(after + 5 * 60 * 1000);
     }, 30000);
+
+    test("Falha ao salvar o log desfaz o cadastro e o convite", async () => {
+        const failedEmail = `cadastro.falha.${randomUUID()}@example.com`;
+        jest.mocked(createLogService).mockRejectedValueOnce(new Error("Falha ao salvar log"));
+
+        const response = await app.inject({
+            method: "POST", url: "/api/users",
+            headers: { authorization: `Bearer ${token}` },
+            payload: { name: "Aluno Teste", email: failedEmail, role: UserRole.ALUNO }
+        });
+
+        expect(response.statusCode).toBe(400);
+        expect(response.json().message).toBe("Falha ao salvar log");
+        expect(await prisma.usuario.findUnique({ where: { email: failedEmail } })).toBeNull();
+        expect(await prisma.logs.count({
+            where: { user_id: adminId, action: "CADASTRO_USUARIO", description: { contains: failedEmail } }
+        })).toBe(0);
+    });
 
     test("deve listar usuários e encontrar o usuário cadastrado", async () => {
         const user = { name: "Aluno Listagem", email: listEmail, role: UserRole.ALUNO };

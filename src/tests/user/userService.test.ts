@@ -2,17 +2,28 @@ import { describe, test, expect, jest, beforeEach, afterEach } from "@jest/globa
 import { UserRole } from "../../utils/user";
 
 describe("createUserService", () => {
+    const transaction = {};
+
     beforeEach(() => {
         jest.resetModules();
+        jest.doMock("../../database/prisma", () => ({
+            prisma: { $transaction: async (operation: (client: object) => Promise<unknown>) => operation(transaction) }
+        }));
     });
 
-    test("deve cadastrar um usuário sem receber senha", async () => {
+    afterEach(() => {
+        jest.dontMock("../../database/prisma");
+    });
+
+    test("deve cadastrar o usuário e salvar o convite na mesma transação", async () => {
         const createUserRepository = jest.fn<(...args: any[]) => Promise<any>>();
+        const saveUserInvitationRepository = jest.fn<(...args: any[]) => Promise<any>>();
         const listUserByEmailRepository = jest.fn<(...args: any[]) => Promise<any>>();
         const createLogService = jest.fn<(...args: any[]) => Promise<any>>();
 
         jest.doMock("../../repositories/userRepository", () => ({
             createUserRepository,
+            saveUserInvitationRepository,
             listUserByEmailRepository,
             listUsersRepository: jest.fn(),
             listUserByIdRepository: jest.fn(),
@@ -44,6 +55,7 @@ describe("createUserService", () => {
 
         listUserByEmailRepository.mockResolvedValue(undefined);
         createUserRepository.mockResolvedValue(createdUser);
+        saveUserInvitationRepository.mockResolvedValue(createdUser);
         createLogService.mockResolvedValue(undefined);
 
         const result = await createUserService(user, userId);
@@ -51,12 +63,13 @@ describe("createUserService", () => {
         expect(result).toEqual(createdUser);
         expect(listUserByEmailRepository).toHaveBeenCalledWith(user.email);
         expect(createUserRepository).toHaveBeenCalledTimes(1);
-        expect(createUserRepository).toHaveBeenCalledWith(user);
+        expect(createUserRepository).toHaveBeenCalledWith(user, transaction);
+        expect(saveUserInvitationRepository).toHaveBeenCalledWith(createdUser.id, expect.any(String), expect.any(Date), transaction);
         expect(createLogService).toHaveBeenCalledWith({
             userId,
             action: "CADASTRO_USUARIO",
             description: `Usuário com o e-mail ${createdUser.email} foi cadastrado`,
-        });
+        }, transaction);
     });
 
     test("deve lançar um erro se o e-mail já estiver cadastrado", async () => {
@@ -200,7 +213,6 @@ describe("updateUserService", () => {
     test("não deve registrar sucesso se o banco falhar", async () => {
         const { updateUserService } = await import("../../services/userService");
         updateUserRepository.mockRejectedValue(new Error("Falha no banco"));
-
         await expect(updateUserService(7, user, 10)).rejects.toThrow("Falha no banco");
         expect(createLogService).not.toHaveBeenCalled();
     });
