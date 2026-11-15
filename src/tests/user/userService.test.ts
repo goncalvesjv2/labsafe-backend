@@ -1,11 +1,16 @@
 import { describe, test, expect, jest, beforeEach, afterEach } from "@jest/globals";
 import { UserRole } from "../../utils/user";
+import type { IEmail } from "../../interfaces/IEmail";
 
 describe("createUserService", () => {
     const transaction = {};
+    const sendEmailService = jest.fn<(email: IEmail) => Promise<{ messageId: string }>>();
 
     beforeEach(() => {
         jest.resetModules();
+        sendEmailService.mockReset();
+        sendEmailService.mockResolvedValue({ messageId: "email-teste" });
+        jest.doMock("../../services/emailService", () => ({ sendEmailService }));
         jest.doMock("../../database/prisma", () => ({
             prisma: { $transaction: async (operation: (client: object) => Promise<unknown>) => operation(transaction) }
         }));
@@ -13,6 +18,7 @@ describe("createUserService", () => {
 
     afterEach(() => {
         jest.dontMock("../../database/prisma");
+        jest.dontMock("../../services/emailService");
     });
 
     test("deve cadastrar o usuário e salvar o convite na mesma transação", async () => {
@@ -60,7 +66,13 @@ describe("createUserService", () => {
 
         const result = await createUserService(user, userId);
 
-        expect(result).toEqual(createdUser);
+        expect(result).toEqual({ ...createdUser, invitationSent: true });
+        expect(sendEmailService).toHaveBeenCalledTimes(1);
+        expect(sendEmailService).toHaveBeenCalledWith({
+            to: createdUser.email,
+            subject: "LabSafe - Crie sua senha",
+            text: expect.stringContaining("/reset-password?type=invitation&token=")
+        });
         expect(listUserByEmailRepository).toHaveBeenCalledWith(user.email);
         expect(createUserRepository).toHaveBeenCalledTimes(1);
         expect(createUserRepository).toHaveBeenCalledWith(user, transaction);
@@ -104,6 +116,7 @@ describe("createUserService", () => {
         expect(listUserByEmailRepository).toHaveBeenCalledWith(user.email);
         expect(createUserRepository).not.toHaveBeenCalled();
         expect(createLogService).not.toHaveBeenCalled();
+        expect(sendEmailService).not.toHaveBeenCalled();
     });
 });
 

@@ -1,3 +1,4 @@
+/// <reference types="jest" />
 import "dotenv/config";
 import { afterAll, beforeAll, describe, expect, test } from "@jest/globals";
 import { randomUUID } from "node:crypto";
@@ -6,6 +7,10 @@ import { app } from "../../app";
 import { prisma } from "../../database/prisma";
 import { user_role } from "../../generated/prisma/enums";
 import { UserRole } from "../../utils/user";
+
+jest.mock("../../services/emailService", () => ({
+    sendEmailService: jest.fn().mockResolvedValue({ messageId: "email-teste" })
+}));
 
 describe("Teste de integração de conteúdos", () => {
     let token: string;

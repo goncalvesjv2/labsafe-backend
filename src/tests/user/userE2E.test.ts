@@ -1,3 +1,4 @@
+/// <reference types="jest" />
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from "@jest/globals";
 import { app } from "../../app";
 import { prisma } from "../../database/prisma";
@@ -6,6 +7,10 @@ import { UserRole } from "../../utils/user";
 import { user_role } from "../../generated/prisma/enums";
 import bcrypt from "bcrypt";
 import assert from "node:assert/strict";
+
+jest.mock("../../services/emailService", () => ({
+    sendEmailService: jest.fn().mockResolvedValue({ messageId: "email-teste" })
+}));
 
 describe("API de usuários", () => {
     let userId: number | undefined;
