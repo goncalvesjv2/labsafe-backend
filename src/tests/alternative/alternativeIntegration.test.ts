@@ -21,7 +21,6 @@ describe("Testes de integração de alternativas", () => {
     const otherTeacherEmail = `outro.prof.alternative.${randomUUID()}@example.com`;
     const studentEmail = `aluno.alternative.${randomUUID()}@example.com`;
     const adminEmail = `admin.alternative.${randomUUID()}@example.com`;
-    const emails = [teacherEmail, otherTeacherEmail, studentEmail, adminEmail];
 
     async function login(email: string) {
         const response = await app.inject({
@@ -90,19 +89,7 @@ describe("Testes de integração de alternativas", () => {
     }, 30000);
 
     afterAll(async () => {
-        try {
-            // Excluir os quizzes também remove suas questões e alternativas.
-            await prisma.quiz.deleteMany({ where: { usuario: { email: { in: emails } } } });
-            await prisma.conteudo.deleteMany({ where: { usuario: { email: { in: emails } } } });
-            await prisma.logs.deleteMany({ where: { usuario: { email: { in: emails } } } });
-            await prisma.usuario.deleteMany({ where: { email: { in: emails } } });
-        } finally {
-            try {
-                await app.close();
-            } finally {
-                await prisma.$disconnect();
-            }
-        }
+        await Promise.all([app.close(), prisma.$disconnect()]);
     }, 30000);
 
     test("deve cadastrar duas alternativas, remover espaços e registrar os logs", async () => {

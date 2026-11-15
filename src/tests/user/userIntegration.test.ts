@@ -1,6 +1,6 @@
 /// <reference types="jest" />
 import "dotenv/config";
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from "@jest/globals";
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from "@jest/globals";
 import { randomUUID } from "node:crypto";
 import bcrypt from "bcrypt";
 import { app } from "../../app";
@@ -60,13 +60,7 @@ describe("Teste de integração de usuários", () => {
     }, 30000);
 
     afterAll(async () => {
-        try {
-            const emails = [adminEmail, email, listEmail, idEmail, updateEmail, deleteEmail, duplicateEmail, invalidEmail, missingEmail, missingUpdateEmail];
-            await prisma.logs.deleteMany({ where: { usuario: { email: { in: emails } } } });
-            await prisma.usuario.deleteMany({ where: { email: { in: emails } } });
-        } finally {
-            await Promise.all([app.close(), prisma.$disconnect()]);
-        }
+        await Promise.all([app.close(), prisma.$disconnect()]);
     }, 30000);
 
     test("deve criar um usuário salvando o e-mail em minúsculas e sem espaços nas extremidades", async () => {
@@ -347,28 +341,19 @@ describe("Teste de integração de usuários", () => {
         let admin: IUserFormat;
         let user: IUserFormat;
         let adminToken: string;
-        let createdIds: number[];
 
         beforeEach(async () => {
-            createdIds = [];
             jest.mocked(createLogService).mockReset();
             jest.mocked(createLogService).mockImplementation(originalCreateLogService);
 
             admin = await prisma.usuario.create({
                 data: { name: "Admin Teste", email: `admin.status.${randomUUID()}@example.com`, senha: passwordHash, role: user_role.Admin }
             });
-            createdIds.push(admin.id);
 
             user = await prisma.usuario.create({
                 data: { name: "Aluno Teste", email: `aluno.status.${randomUUID()}@example.com`, senha: passwordHash, role: user_role.Aluno_a_ }
             });
-            createdIds.push(user.id);
             adminToken = app.jwt.sign({ sub: admin.id, role: UserRole.ADMIN });
-        });
-
-        afterEach(async () => {
-            await prisma.logs.deleteMany({ where: { user_id: { in: createdIds } } });
-            await prisma.usuario.deleteMany({ where: { id: { in: createdIds } } });
         });
 
         async function changeStatus(ativo: boolean) {

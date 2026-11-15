@@ -45,15 +45,7 @@ describe("Teste de integração de conteúdos", () => {
     }, 30000);
 
     afterAll(async () => {
-        try {
-            const emails = [teacherEmail, studentEmail, adminEmail, newTeacherEmail,
-                studentListEmail, studentDetailEmail, adminListEmail, adminDetailEmail];
-            await prisma.conteudo.deleteMany({ where: { usuario: { email: { in: emails } } } });
-            await prisma.logs.deleteMany({ where: { usuario: { email: { in: emails } } } });
-            await prisma.usuario.deleteMany({ where: { email: { in: emails } } });
-        } finally {
-            await Promise.all([app.close(), prisma.$disconnect()]);
-        }
+        await Promise.all([app.close(), prisma.$disconnect()]);
     }, 30000);
 
     test("deve permitir que o professor cadastre um conteúdo", async () => {

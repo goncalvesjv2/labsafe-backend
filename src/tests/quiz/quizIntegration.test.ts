@@ -85,14 +85,7 @@ describe("Testes de integração do quiz", () => {
     }, 30000);
 
     afterAll(async () => {
-        try {
-            await prisma.quiz.deleteMany({ where: { conteudo: { usuario: { email: { in: emails } } } } });
-            await prisma.conteudo.deleteMany({ where: { usuario: { email: { in: emails } } } });
-            await prisma.logs.deleteMany({ where: { usuario: { email: { in: emails } } } });
-            await prisma.usuario.deleteMany({ where: { email: { in: emails } } });
-        } finally {
-            await Promise.all([app.close(), prisma.$disconnect()]);
-        }
+        await Promise.all([app.close(), prisma.$disconnect()]);
     }, 30000);
 
     test("deve cadastrar um quiz em um conteúdo próprio e registrar o log", async () => {

@@ -22,7 +22,6 @@ describe("Testes de integração de tentativas", () => {
     const studentEmail = `aluno.tentativa.${testId}@example.com`;
     const otherStudentEmail = `outro.aluno.tentativa.${testId}@example.com`;
     const adminEmail = `admin.tentativa.${testId}@example.com`;
-    const emails = [teacherEmail, otherTeacherEmail, studentEmail, otherStudentEmail, adminEmail];
 
     async function login(email: string) {
         const response = await app.inject({
@@ -109,16 +108,7 @@ describe("Testes de integração de tentativas", () => {
     }, 30000);
 
     afterAll(async () => {
-        try {
-            await prisma.attempt.deleteMany({ where: { quiz: { usuario: { email: { in: emails } } } } });
-            await prisma.quiz.deleteMany({ where: { usuario: { email: { in: emails } } } });
-            await prisma.conteudo.deleteMany({ where: { usuario: { email: { in: emails } } } });
-            await prisma.logs.deleteMany({ where: { usuario: { email: { in: emails } } } });
-            await prisma.usuario.deleteMany({ where: { email: { in: emails } } });
-        } finally {
-            await app.close();
-            await prisma.$disconnect();
-        }
+        await Promise.all([app.close(), prisma.$disconnect()]);
     }, 30000);
 
     test("deve salvar a tentativa, as respostas e o log quando o aluno acerta tudo", async () => {

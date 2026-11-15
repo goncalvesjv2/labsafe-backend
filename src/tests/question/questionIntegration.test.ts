@@ -21,7 +21,6 @@ describe("Testes de integração de questões", () => {
     const otherTeacherEmail = `outro.professor.question.${randomUUID()}@example.com`;
     const studentEmail = `aluno.question.${randomUUID()}@example.com`;
     const adminEmail = `admin.question.${randomUUID()}@example.com`;
-    const emails = [teacherEmail, otherTeacherEmail, studentEmail, adminEmail];
 
     async function login(email: string) {
         const response = await app.inject({
@@ -88,18 +87,7 @@ describe("Testes de integração de questões", () => {
     }, 30000);
 
     afterAll(async () => {
-        try {
-            await prisma.quiz.deleteMany({ where: { usuario: { email: { in: emails } } } });
-            await prisma.conteudo.deleteMany({ where: { usuario: { email: { in: emails } } } });
-            await prisma.logs.deleteMany({ where: { usuario: { email: { in: emails } } } });
-            await prisma.usuario.deleteMany({ where: { email: { in: emails } } });
-        } finally {
-            try {
-                await app.close();
-            } finally {
-                await prisma.$disconnect();
-            }
-        }
+        await Promise.all([app.close(), prisma.$disconnect()]);
     }, 30000);
 
     test("deve cadastrar a primeira questão, remover espaços e registrar o log", async () => {
