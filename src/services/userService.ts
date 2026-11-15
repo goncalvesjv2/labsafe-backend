@@ -182,13 +182,7 @@ export async function updateUserService(id: number, user: UpdateUser, userId: nu
         }
     }
 
-    let passwordHash = "";
-    
-    if (user.password) {
-        passwordHash = await bcrypt.hash(user.password, 10);
-    }
-
-    const updateUser = await updateUserRepository(id, user, passwordHash);
+    const updateUser = await updateUserRepository(id, user);
     
     if (!updateUser) {
         throw new Error("Usuário não encontrado");

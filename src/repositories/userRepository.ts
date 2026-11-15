@@ -56,13 +56,12 @@ export async function createUserRepository(user: ICreateUser, transaction: Prism
     return formatUser(newUser);
 }
 
-export async function updateUserRepository(id: number, user: UpdateUser, password: string): Promise<IUserResponse | null> {
+export async function updateUserRepository(id: number, user: UpdateUser): Promise<IUserResponse | null> {
     const updatedUsers = await prisma.usuario.updateManyAndReturn({
         where: { id },
         data: {
             name: user.name,
             email: user.email,
-            senha: password || undefined,
             role: role[user.role]
         },
     });

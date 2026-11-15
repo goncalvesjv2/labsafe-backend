@@ -7,9 +7,7 @@ export const userSchema = z.object({
     role: z.enum(UserRole)
 });
 
-export const updateUserSchema = userSchema.extend({
-    password: z.string().trim().min(8, "No mínimo 8 caracteres").optional()
-});
+export const updateUserSchema = userSchema.strict();
 
 export const changeUserStatusSchema = z.object({
     ativo: z.boolean()
