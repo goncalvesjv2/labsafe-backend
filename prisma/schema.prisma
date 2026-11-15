@@ -20,7 +20,7 @@ model usuario {
   id                    Int        @id @default(autoincrement())
   name                  String     @db.VarChar(100)
   email                 String     @unique @db.VarChar(100)
-  senha                 String     @db.VarChar(255)
+  senha                 String?    @db.VarChar(255)
   role                  user_role
   ativo                 Boolean    @default(true)
   invitation_token_hash String?    @unique @db.VarChar(64)

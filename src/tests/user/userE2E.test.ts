@@ -5,6 +5,7 @@ import { generateToken } from "../../utils/token";
 import { UserRole } from "../../utils/user";
 import { user_role } from "../../generated/prisma/enums";
 import bcrypt from "bcrypt";
+import assert from "node:assert/strict";
 
 describe("API de usuários", () => {
     let userId: number | undefined;
@@ -83,6 +84,7 @@ describe("API de usuários", () => {
         expect(response.json()).toMatchObject({ id: userId, email, name: "Usuário E2E" });
         expect(response.json()).not.toHaveProperty("senha");
         const savedUser = await prisma.usuario.findUniqueOrThrow({ where: { id: userId } });
+        assert.ok(savedUser.senha);
         expect(await bcrypt.compare("SenhaTeste123!", savedUser.senha)).toBe(true);
         expect(await bcrypt.compare("  SenhaTeste123!  ", savedUser.senha)).toBe(false);
     });
@@ -125,6 +127,7 @@ describe("API de usuários", () => {
         expect(savedUser.name).toBe("Ana");
         expect(savedUser.email).toBe(updatedEmail);
         expect(savedUser.senha).not.toBe("NovaSenhaTeste123!");
+        assert.ok(savedUser.senha);
         expect(await bcrypt.compare("NovaSenhaTeste123!", savedUser.senha)).toBe(true);
         expect(await bcrypt.compare("  NovaSenhaTeste123!  ", savedUser.senha)).toBe(false);
         expect(await bcrypt.compare("SenhaTeste123!", savedUser.senha)).toBe(false);

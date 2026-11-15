@@ -2,6 +2,7 @@
 import "dotenv/config";
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "@jest/globals";
 import { randomUUID } from "node:crypto";
+import assert from "node:assert/strict";
 import bcrypt from "bcrypt";
 import { app } from "../../app";
 import { prisma } from "../../database/prisma";
@@ -84,6 +85,7 @@ describe("Teste de integração de usuários", () => {
         const savedUser = await prisma.usuario.findUniqueOrThrow({ where: { email } });
         expect(savedUser).toMatchObject({ id: body.id, name: user.name, email, role: user_role.Aluno_a_ });
         expect(savedUser.senha).not.toBe(password);
+        assert.ok(savedUser.senha);
         expect(await bcrypt.compare(password, savedUser.senha)).toBe(true);
     }, 30000);
 
@@ -400,6 +402,7 @@ describe("Teste de integração de usuários", () => {
             expect(savedAdmin.name).toBe("Admin Atualizado");
             expect(savedAdmin.email).toBe(newEmail);
             expect(savedAdmin.role).toBe(user_role.Admin);
+            assert.ok(savedAdmin.senha);
             expect(await bcrypt.compare("NovaSenha123!", savedAdmin.senha)).toBe(true);
         });
 
@@ -459,6 +462,15 @@ describe("Teste de integração de usuários", () => {
             expect(response.statusCode).toBe(200);
             expect(response.json().token).toEqual(expect.any(String));
             expect(await prisma.logs.count({ where: { user_id: user.id, action: "LOGIN" } })).toBe(1);
+        });
+
+        test("Usuário sem senha definida não pode fazer login", async () => {
+            await prisma.usuario.update({ where: { id: user.id }, data: { senha: null } });
+            const response = await loginUser();
+            expect(response.statusCode).toBe(401);
+            expect(response.json().message).toBe("E-mail ou senha inválidos");
+            expect(response.json()).not.toHaveProperty("token");
+            expect(await prisma.logs.count({ where: { user_id: user.id, action: "LOGIN" } })).toBe(0);
         });
 
         test("Usuário ativo não pode fazer login com a senha incorreta", async () => {

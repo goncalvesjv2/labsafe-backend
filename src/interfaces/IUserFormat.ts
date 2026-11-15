@@ -4,7 +4,7 @@ export interface IUserFormat {
     id: number;
     name: string;
     email: string;
-    senha: string;
+    senha: string | null;
     role: user_role;
     ativo: boolean;
 }
