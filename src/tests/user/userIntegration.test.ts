@@ -728,13 +728,13 @@ describe("Teste de integração de usuários", () => {
                 });
 
                 expect(response.statusCode).toBe(400);
-                expect(response.json().message).toBe("Você não pode alterar seu próprio cargo");
+                expect(response.json().message).toBe("Você não pode editar sua própria conta");
                 expect(await prisma.usuario.findUniqueOrThrow({ where: { id: admin.id } })).toEqual(admin);
                 expect(await prisma.logs.count({ where: { user_id: admin.id, action: "ALTERACAO_USUARIO" } })).toBe(0);
             }
         });
 
-        test("Admin pode editar nome e e-mail mantendo a senha e o próprio cargo", async () => {
+        test("Admin não pode editar nome e e-mail da própria conta mesmo mantendo o cargo", async () => {
             const newEmail = `novo.${randomUUID()}@example.com`;
             const response = await app.inject({
                 method: "PATCH", url: `/api/users/${admin.id}`,
@@ -742,13 +742,11 @@ describe("Teste de integração de usuários", () => {
                 payload: { name: "Admin Atualizado", email: newEmail, role: UserRole.ADMIN }
             });
 
-            expect(response.statusCode).toBe(200);
-            expect(response.json()).not.toHaveProperty("senha");
+            expect(response.statusCode).toBe(400);
+            expect(response.json().message).toBe("Você não pode editar sua própria conta");
             const savedAdmin = await prisma.usuario.findUniqueOrThrow({ where: { id: admin.id } });
-            expect(savedAdmin.name).toBe("Admin Atualizado");
-            expect(savedAdmin.email).toBe(newEmail);
-            expect(savedAdmin.role).toBe(user_role.Admin);
-            expect(savedAdmin.senha).toBe(admin.senha);
+            expect(savedAdmin).toEqual(admin);
+            expect(await prisma.logs.count({ where: { user_id: admin.id, action: "ALTERACAO_USUARIO" } })).toBe(0);
         });
 
         test("Admin pode alterar o cargo de outro usuário", async () => {

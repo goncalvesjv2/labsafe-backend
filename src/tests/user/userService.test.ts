@@ -196,6 +196,14 @@ describe("updateUserService", () => {
         jest.resetModules();
     });
 
+    test.each([UserRole.ADMIN, UserRole.ALUNO, UserRole.PROFESSOR])("deve bloquear a edição da própria conta com cargo %s antes de salvar", async (role) => {
+        const { updateUserService } = await import("../../services/userService");
+
+        await expect(updateUserService(10, { ...user, role }, 10)).rejects.toThrow("Você não pode editar sua própria conta");
+        expect(updateUserRepository).not.toHaveBeenCalled();
+        expect(createLogService).not.toHaveBeenCalled();
+    });
+
     test("deve atualizar o usuário e salvar o log na mesma transação", async () => {
         const { updateUserService } = await import("../../services/userService");
 
