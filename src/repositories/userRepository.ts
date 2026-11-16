@@ -57,14 +57,29 @@ export async function createUserRepository(user: ICreateUser, transaction: Prism
 }
 
 export async function updateUserRepository(id: number, user: UpdateUser, transaction: Prisma.TransactionClient = prisma): Promise<IUserResponse | null> {
-    const updatedUsers = await transaction.usuario.updateManyAndReturn({
-        where: { id },
-        data: {
-            name: user.name,
-            email: user.email,
-            role: role[user.role]
-        },
+    const data = {
+        name: user.name,
+        email: user.email,
+        role: role[user.role]
+    };
+
+    let updatedUsers = await transaction.usuario.updateManyAndReturn({
+        where: { id, email: user.email },
+        data
     });
+
+    if (updatedUsers.length === 0) {
+        updatedUsers = await transaction.usuario.updateManyAndReturn({
+            where: { id, email: { not: user.email } },
+            data: {
+                ...data,
+                invitation_token_hash: null,
+                invitation_expires_at: null,
+                password_reset_token_hash: null,
+                password_reset_expires_at: null
+            }
+        });
+    }
 
     const updatedUser = updatedUsers[0];
     return updatedUser ? formatUser(updatedUser) : null;
