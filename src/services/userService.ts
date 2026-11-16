@@ -166,20 +166,16 @@ export async function acceptUserInvitationService(token: string, password: strin
 }
 
 export async function updateUserService(id: number, user: UpdateUser, userId: number) {
+    if (id === userId) {
+        throw new Error("Você não pode editar sua própria conta");
+    }
+
     if (!user.name || !user.email || !user.role) {
         throw new Error("Nome, e-mail e cargo são obrigatórios");
     }
     
     if (user.role !== UserRole.ADMIN && user.role !== UserRole.ALUNO && user.role !== UserRole.PROFESSOR) {
         throw new Error("Esse role não é válido");
-    }
-
-    if (id === userId) {
-        const currentUser = await listUserByIdService(id);
-
-        if (user.role !== currentUser.role) {
-            throw new Error("Você não pode alterar seu próprio cargo");
-        }
     }
 
     return prisma.$transaction(async (transaction) => {
