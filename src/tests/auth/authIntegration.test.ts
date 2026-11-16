@@ -6,6 +6,7 @@ describe("Testes de integração - autenticação", () => {
     const loginServiceMock = jest.fn<(email: string, password: string) => Promise<{ token: string }>>();
     const findUser = jest.fn<(id: number) => Promise<IUserResponse>>();
     const findAuthenticatedUser = jest.fn<(id: number) => Promise<IUserResponse | null>>();
+    const deleteUser = jest.fn<(id: number) => Promise<unknown>>();
     const profile = {
         id: 7,
         name: "Usuário de teste",
@@ -29,6 +30,7 @@ describe("Testes de integração - autenticação", () => {
         jest.doMock("../../repositories/userRepository", () => ({
             ...jest.requireActual<typeof import("../../repositories/userRepository")>("../../repositories/userRepository"),
             listUserByIdRepository: findAuthenticatedUser,
+            deleteUserRepository: deleteUser,
         }));
 
         const appModule = await import("../../app");
@@ -42,6 +44,8 @@ describe("Testes de integração - autenticação", () => {
         findUser.mockReset();
         findAuthenticatedUser.mockReset();
         findAuthenticatedUser.mockResolvedValue(profile);
+        deleteUser.mockReset();
+        deleteUser.mockResolvedValue(profile);
     });
 
     afterAll(async () => {
@@ -121,6 +125,88 @@ describe("Testes de integração - autenticação", () => {
 
             expect(response.statusCode).toBe(401);
             expect(response.json()).toHaveProperty("message", "E-mail ou senha inválidos");
+        });
+    });
+
+    describe("Exclusão da própria conta", () => {
+        test.each([UserRole.PROFESSOR, UserRole.ALUNO])("permite que exclua a própria conta apenas com o token", async (role) => {
+            findAuthenticatedUser.mockResolvedValue({ ...profile, role });
+            const token = app.jwt.sign({ sub: profile.id, role });
+
+            const response = await app.inject({
+                method: "DELETE", url: "/auth/me",
+                headers: { authorization: `Bearer ${token}` }
+            });
+
+            expect(response.statusCode).toBe(204);
+            expect(response.body).toBe("");
+            expect(deleteUser).toHaveBeenCalledTimes(1);
+            expect(deleteUser).toHaveBeenCalledWith(profile.id);
+        });
+
+        test("bloqueia o administrador mesmo que o token declare o cargo de aluno", async () => {
+            findAuthenticatedUser.mockResolvedValue({ ...profile, role: UserRole.ADMIN });
+            const token = app.jwt.sign({ sub: profile.id, role: UserRole.ALUNO });
+
+            const response = await app.inject({
+                method: "DELETE", url: "/auth/me",
+                headers: { authorization: `Bearer ${token}` }
+            });
+
+            expect(response.statusCode).toBe(400);
+            expect(response.json().message).toBe("Você não pode excluir sua própria conta");
+            expect(deleteUser).not.toHaveBeenCalled();
+        });
+
+        test("rejeita requisições sem token, com token inválido ou expirado", async () => {
+            const expired = app.jwt.sign({ sub: profile.id, role: UserRole.ALUNO }, { expiresIn: -1 });
+            for (const authorization of [undefined, "Bearer invalido", `Bearer ${expired}`]) {
+                const response = await app.inject({
+                    method: "DELETE", url: "/auth/me",
+                    headers: authorization ? { authorization } : {}
+                });
+                expect(response.statusCode).toBe(401);
+            }
+            expect(deleteUser).not.toHaveBeenCalled();
+        });
+
+        test("rejeita usuários inativos ou inexistentes", async () => {
+            const token = app.jwt.sign({ sub: profile.id, role: UserRole.ALUNO });
+            for (const user of [null, { ...profile, ativo: false }]) {
+                findAuthenticatedUser.mockResolvedValue(user);
+                const response = await app.inject({
+                    method: "DELETE", url: "/auth/me",
+                    headers: { authorization: `Bearer ${token}` }
+                });
+                expect(response.statusCode).toBe(401);
+            }
+            expect(deleteUser).not.toHaveBeenCalled();
+        });
+
+        test("usa o ID do token mesmo quando outro ID é informado no corpo ou na query", async () => {
+            const token = app.jwt.sign({ sub: profile.id, role: UserRole.ALUNO });
+            const response = await app.inject({
+                method: "DELETE", url: "/auth/me?id=999",
+                headers: { authorization: `Bearer ${token}` },
+                payload: { id: 999 }
+            });
+
+            expect(response.statusCode).toBe(204);
+            expect(deleteUser).toHaveBeenCalledWith(profile.id);
+        });
+
+        test("o token deixa de permitir acesso depois que a conta é excluída", async () => {
+            const token = app.jwt.sign({ sub: profile.id, role: UserRole.ALUNO });
+            deleteUser.mockImplementationOnce(async () => {
+                findAuthenticatedUser.mockResolvedValue(null);
+                return profile;
+            });
+            const headers = { authorization: `Bearer ${token}` };
+
+            expect((await app.inject({ method: "DELETE", url: "/auth/me", headers })).statusCode).toBe(204);
+            expect((await app.inject({ method: "GET", url: "/auth/me", headers })).statusCode).toBe(401);
+            expect((await app.inject({ method: "DELETE", url: "/auth/me", headers })).statusCode).toBe(401);
+            expect(deleteUser).toHaveBeenCalledTimes(1);
         });
     });
 

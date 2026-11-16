@@ -274,7 +274,7 @@ describe("Teste de integração de usuários", () => {
             headers: { Authorization: `Bearer ${token}` }
         });
 
-        expect(response.statusCode).toBe(403);
+        expect(response.statusCode).toBe(400);
         const body = response.json();
         expect(body.message).toBe("Você não pode excluir sua própria conta");
 
