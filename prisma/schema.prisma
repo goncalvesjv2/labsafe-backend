@@ -13,7 +13,7 @@ model logs {
   action      String   @db.VarChar(100)
   description String
   created_at  DateTime @default(now()) @db.Timestamp(6)
-  usuario     usuario  @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_logs_user")
+  usuario     usuario  @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_logs_user")
 }
 
 model usuario {
@@ -38,7 +38,7 @@ model conteudo {
   professor_id Int
   title        String  @db.VarChar(150)
   description  String
-  usuario      usuario @relation(fields: [professor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usuario      usuario @relation(fields: [professor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   quiz         quiz?
 }
 
@@ -46,8 +46,8 @@ model quiz {
   id           Int        @id @default(autoincrement())
   conteudo_id  Int        @unique
   professor_id Int
-  conteudo     conteudo   @relation(fields: [conteudo_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  usuario      usuario    @relation(fields: [professor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  conteudo     conteudo   @relation(fields: [conteudo_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  usuario      usuario    @relation(fields: [professor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   questions    question[]
   attempts     attempt[]
 }
@@ -86,7 +86,7 @@ model attempt {
   approved        Boolean
   created_at      DateTime @default(now()) @db.Timestamp(6)
   quiz            quiz     @relation(fields: [quiz_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  student         usuario  @relation(fields: [student_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  student         usuario  @relation(fields: [student_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   answers         answer[]
 
   @@index([quiz_id])
@@ -100,8 +100,8 @@ model answer {
   question_id    Int
   alternative_id Int
   attempt        attempt     @relation(fields: [attempt_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  question       question    @relation(fields: [question_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  alternative    alternative @relation(fields: [alternative_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  question       question    @relation(fields: [question_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  alternative    alternative @relation(fields: [alternative_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([attempt_id, question_id])
   @@index([question_id])
