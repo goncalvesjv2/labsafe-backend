@@ -63,6 +63,8 @@ const savedAttempt = {
     studentId: student.id,
     score: 100,
     approved: true,
+    correctCount: 3,
+    totalQuestions: 3,
     createdAt: new Date("2026-11-08T12:00:00Z")
 };
 const listedAttempt = { ...savedAttempt, studentName: student.name };
@@ -99,7 +101,7 @@ describe("Criação de tentativas", () => {
     test("deve salvar a tentativa, as respostas e o log quando o aluno acerta tudo", async () => {
         const result = await createAttemptService(input, student.id);
         expect(result).toEqual({ attempt: savedAttempt, totalQuestions: 3, correctCount: 3 });
-        expect(createAttemptMock).toHaveBeenCalledWith({ quizId: quiz.id, studentId: student.id, score: 100, approved: true }, expect.any(Object));
+        expect(createAttemptMock).toHaveBeenCalledWith({ quizId: quiz.id, studentId: student.id, score: 100, approved: true, correctCount: 3, totalQuestions: 3 }, expect.any(Object));
         expect(createAnswerMock).toHaveBeenCalledWith([
             { attemptId: savedAttempt.id, questionId: 1, alternativeId: 11 },
             { attemptId: savedAttempt.id, questionId: 2, alternativeId: 21 },
@@ -123,6 +125,8 @@ describe("Criação de tentativas", () => {
             ]
         };
         const result = await createAttemptService(submission, student.id);
+        expect(result.attempt.correctCount).toBe(3);
+        expect(result.attempt.totalQuestions).toBe(5);
         expect(result.attempt.score).toBe(60);
         expect(result.attempt.approved).toBe(true);
         expect(result.correctCount).toBe(3);
@@ -138,6 +142,8 @@ describe("Criação de tentativas", () => {
             ]
         };
         const result = await createAttemptService(submission, student.id);
+        expect(result.attempt.correctCount).toBe(1);
+        expect(result.attempt.totalQuestions).toBe(3);
         expect(result.attempt.score).toBe(33.3);
         expect(result.attempt.approved).toBe(false);
         expect(result.correctCount).toBe(1);
@@ -167,6 +173,8 @@ describe("Criação de tentativas", () => {
             ]
         };
         const result = await createAttemptService(submission, student.id);
+        expect(result.attempt.correctCount).toBe(0);
+        expect(result.attempt.totalQuestions).toBe(3);
         expect(result.attempt.score).toBe(0);
         expect(result.attempt.approved).toBe(false);
         expect(result.correctCount).toBe(0);

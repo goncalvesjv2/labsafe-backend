@@ -118,7 +118,7 @@ describe("Testes de integração de tentativas", () => {
         expect(response.statusCode).toBe(201);
         const body = response.json();
         expect(body).toEqual({
-            attempt: { id: expect.any(Number), quizId: quiz.id, studentId, score: 100, approved: true, createdAt: expect.any(String) },
+            attempt: { id: expect.any(Number), quizId: quiz.id, studentId, score: 100, approved: true, correctCount: 3, totalQuestions: 3, createdAt: expect.any(String) },
             totalQuestions: 3,
             correctCount: 3
         });
@@ -127,6 +127,8 @@ describe("Testes de integração de tentativas", () => {
         expect(attempt.quiz_id).toBe(quiz.id);
         expect(attempt.student_id).toBe(studentId);
         expect(Number(attempt.score)).toBe(100);
+        expect(attempt.correct_count).toBe(3);
+        expect(attempt.total_questions).toBe(3);
         expect(attempt.approved).toBe(true);
         const answers = await prisma.answer.findMany({ where: { attempt_id: attempt.id } });
         expect(answers).toHaveLength(3);
