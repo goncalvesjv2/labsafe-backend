@@ -758,6 +758,38 @@ describe("Teste de integração de usuários", () => {
             });
             expect(response.statusCode).toBe(200);
             expect((await prisma.usuario.findUniqueOrThrow({ where: { id: user.id } })).role).toBe(user_role.Professor_a_);
+            const logs = await prisma.logs.findMany({ where: { user_id: admin.id, action: "ALTERACAO_USUARIO" } });
+            expect(logs).toHaveLength(1);
+            expect(logs[0].description).toContain(user.email);
+        });
+
+        test("Falha após gravar o log desfaz a edição do usuário e o log", async () => {
+            const updatedUser = { name: "Aluno Atualizado", email: `edicao.${randomUUID()}@example.com`, role: UserRole.PROFESSOR };
+            jest.mocked(createLogService).mockImplementationOnce(async (log, transaction) => {
+                await originalCreateLogService(log, transaction);
+                throw new Error("Falha ao concluir o log");
+            });
+
+            const response = await app.inject({
+                method: "PATCH", url: `/api/users/${user.id}`,
+                headers: { authorization: `Bearer ${adminToken}` }, payload: updatedUser
+            });
+            expect(response.statusCode).toBe(400);
+            expect(response.json().message).toBe("Falha ao concluir o log");
+            expect(await prisma.usuario.findUniqueOrThrow({ where: { id: user.id } })).toEqual(user);
+            expect(await prisma.logs.count({ where: { user_id: admin.id, action: "ALTERACAO_USUARIO" } })).toBe(0);
+
+            const retry = await app.inject({
+                method: "PATCH", url: `/api/users/${user.id}`,
+                headers: { authorization: `Bearer ${adminToken}` }, payload: updatedUser
+            });
+            expect(retry.statusCode).toBe(200);
+            const savedUser = await prisma.usuario.findUniqueOrThrow({ where: { id: user.id } });
+            expect(savedUser.name).toBe(updatedUser.name);
+            expect(savedUser.email).toBe(updatedUser.email);
+            expect(savedUser.role).toBe(user_role.Professor_a_);
+            expect(savedUser.senha).toBe(user.senha);
+            expect(await prisma.logs.count({ where: { user_id: admin.id, action: "ALTERACAO_USUARIO" } })).toBe(1);
         });
 
         test("Admin que virou aluno não pode acessar rota administrativa com o token antigo", async () => {

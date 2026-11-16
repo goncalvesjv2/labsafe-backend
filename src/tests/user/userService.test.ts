@@ -157,6 +157,7 @@ describe("deleteUserService", () => {
 });
 
 describe("updateUserService", () => {
+    const transaction = {};
     const user = {
         name: "Ana",
         email: "ana@example.com",
@@ -164,8 +165,8 @@ describe("updateUserService", () => {
     };
     const savedUser = { id: 7, ...user, ativo: true };
 
-    const updateUserRepository = jest.fn<(id: number, user: unknown) => Promise<unknown>>();
-    const createLogService = jest.fn<(log: unknown) => Promise<unknown>>();
+    const updateUserRepository = jest.fn<(id: number, user: unknown, client: object) => Promise<unknown>>();
+    const createLogService = jest.fn<(log: unknown, client: object) => Promise<unknown>>();
     const hashPassword = jest.fn<(password: string, rounds: number) => Promise<string>>();
 
     beforeEach(() => {
@@ -174,6 +175,9 @@ describe("updateUserService", () => {
         createLogService.mockReset();
         hashPassword.mockReset();
 
+        jest.doMock("../../database/prisma", () => ({
+            prisma: { $transaction: async (operation: (client: object) => Promise<unknown>) => operation(transaction) }
+        }));
         jest.doMock("../../repositories/userRepository", () => ({ updateUserRepository }));
         jest.doMock("../../services/logService", () => ({ createLogService }));
         jest.doMock("bcrypt", () => ({
@@ -185,21 +189,27 @@ describe("updateUserService", () => {
     });
 
     afterEach(() => {
+        jest.dontMock("../../database/prisma");
         jest.dontMock("../../repositories/userRepository");
         jest.dontMock("../../services/logService");
         jest.dontMock("bcrypt");
         jest.resetModules();
     });
 
-    test("deve atualizar sem gerar uma nova senha", async () => {
+    test("deve atualizar o usuário e salvar o log na mesma transação", async () => {
         const { updateUserService } = await import("../../services/userService");
 
         const result = await updateUserService(7, user, 10);
 
         expect(result).toEqual(savedUser);
         expect(hashPassword).not.toHaveBeenCalled();
-        expect(updateUserRepository).toHaveBeenCalledWith(7, user);
+        expect(updateUserRepository).toHaveBeenCalledWith(7, user, transaction);
         expect(createLogService).toHaveBeenCalledTimes(1);
+        expect(createLogService).toHaveBeenCalledWith({
+            userId: 10,
+            action: "ALTERACAO_USUARIO",
+            description: `O usuário com o e-mail ${user.email} foi atualizado`
+        }, transaction);
     });
 
     test("deve informar quando o usuário não existe", async () => {
