@@ -14,6 +14,8 @@ export async function listAttemptsRepository(): Promise<IAttemptWithStudent[]> {
         studentId: attempt.student_id,
         studentName: attempt.student.name,
         score: Number(attempt.score),
+        correctCount: attempt.correct_count,
+        totalQuestions: attempt.total_questions,
         approved: attempt.approved,
         createdAt: attempt.created_at
     }));
@@ -31,6 +33,8 @@ export async function listAttemptByIdRepository(id: number): Promise<IAttemptWit
         studentId: attempt.student_id,
         studentName: attempt.student.name,
         score: Number(attempt.score),
+        correctCount: attempt.correct_count,
+        totalQuestions: attempt.total_questions,
         approved: attempt.approved,
         createdAt: attempt.created_at
     } : null;
@@ -49,6 +53,8 @@ export async function listAttemptsByStudentIdRepository(studentId: number): Prom
         studentId: attempt.student_id,
         studentName: attempt.student.name,
         score: Number(attempt.score),
+        correctCount: attempt.correct_count,
+        totalQuestions: attempt.total_questions,
         approved: attempt.approved,
         createdAt: attempt.created_at
     }));
@@ -67,6 +73,8 @@ export async function listAttemptsByQuizIdRepository(quizId: number): Promise<IA
         studentId: attempt.student_id,
         studentName: attempt.student.name,
         score: Number(attempt.score),
+        correctCount: attempt.correct_count,
+        totalQuestions: attempt.total_questions,
         approved: attempt.approved,
         createdAt: attempt.created_at
     }));
@@ -78,6 +86,8 @@ export async function createAttemptRepository(attempt: ICreateAttempt, transacti
             quiz_id: attempt.quizId,
             student_id: attempt.studentId,
             score: attempt.score,
+            correct_count: attempt.correctCount,
+            total_questions: attempt.totalQuestions,
             approved: attempt.approved
         }
     });
@@ -87,6 +97,8 @@ export async function createAttemptRepository(attempt: ICreateAttempt, transacti
         quizId: newAttempt.quiz_id,
         studentId: newAttempt.student_id,
         score: Number(newAttempt.score),
+        correctCount: newAttempt.correct_count,
+        totalQuestions: newAttempt.total_questions,
         approved: newAttempt.approved,
         createdAt: newAttempt.created_at
     };

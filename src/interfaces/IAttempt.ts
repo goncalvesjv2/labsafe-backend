@@ -3,11 +3,15 @@ export interface ICreateAttempt {
     studentId: number;
     score: number;
     approved: boolean;
+    correctCount: number;
+    totalQuestions: number;
 }
 
-export interface IAttempt extends ICreateAttempt {
+export interface IAttempt extends Omit<ICreateAttempt, "correctCount" | "totalQuestions"> {
     id: number;
     createdAt: Date;
+    correctCount: number | null;
+    totalQuestions: number | null;
 }
 
 export interface IAttemptWithStudent extends IAttempt {

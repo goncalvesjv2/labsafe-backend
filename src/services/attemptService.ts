@@ -151,7 +151,9 @@ export async function createAttemptService(submission: ISubmitAttempt, studentId
             quizId: quiz.id,
             studentId,
             score,
-            approved
+            approved,
+            correctCount,
+            totalQuestions: questions.length
         }, transaction);
 
         const answers = submission.answers.map((answer) => ({

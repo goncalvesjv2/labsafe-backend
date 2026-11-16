@@ -77,15 +77,17 @@ model alternative {
 }
 
 model attempt {
-  id         Int      @id @default(autoincrement())
-  quiz_id    Int
-  student_id Int
-  score      Decimal  @db.Decimal(4, 1)
-  approved   Boolean
-  created_at DateTime @default(now()) @db.Timestamp(6)
-  quiz       quiz     @relation(fields: [quiz_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  student    usuario  @relation(fields: [student_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  answers    answer[]
+  id              Int      @id @default(autoincrement())
+  quiz_id         Int
+  student_id      Int
+  score           Decimal  @db.Decimal(4, 1)
+  correct_count   Int?
+  total_questions Int?
+  approved        Boolean
+  created_at      DateTime @default(now()) @db.Timestamp(6)
+  quiz            quiz     @relation(fields: [quiz_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  student         usuario  @relation(fields: [student_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  answers         answer[]
 
   @@index([quiz_id])
   @@index([student_id])
