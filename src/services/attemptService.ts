@@ -1,6 +1,6 @@
 import { prisma } from "../database/prisma";
-import type { ISubmitAttempt } from "../interfaces/IAttempt";
-import { createAttemptRepository, listAttemptByIdRepository, listAttemptsByQuizIdRepository } from "../repositories/attemptRepository";
+import type { IStudentQuizResult, ISubmitAttempt } from "../interfaces/IAttempt";
+import { createAttemptRepository, findApprovedAttemptByStudentAndQuizIdRepository, listAttemptByIdRepository, listAttemptsByQuizIdRepository } from "../repositories/attemptRepository";
 import { createAnswerRepository, listAnswersByAttemptIdRepository } from "../repositories/answerRepository";
 import { listAlternativesByQuestionIdRepository } from "../repositories/alternativeRepository";
 import { listQuestionsByQuizIdRepository } from "../repositories/questionRepository";
@@ -81,6 +81,25 @@ export async function listAttemptsByQuizIdService(quizId: number, teacherId: num
     }
 
     return listAttemptsByQuizIdRepository(quizId);
+}
+
+export async function getQuizResultService(quizId: number, studentId: number): Promise<IStudentQuizResult> {
+    const quiz = await listQuizByIdRepository(quizId);
+
+    if (!quiz) {
+        throw new Error("Quiz não encontrado");
+    }
+
+    const attempt = await findApprovedAttemptByStudentAndQuizIdRepository(studentId, quizId);
+
+    return {
+        canAnswer: attempt === null,
+        result: attempt ? {
+            attempt,
+            correctCount: attempt.correctCount,
+            totalQuestions: attempt.totalQuestions
+        } : null
+    };
 }
 
 export async function createAttemptService(submission: ISubmitAttempt, studentId: number) {

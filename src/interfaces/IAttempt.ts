@@ -18,6 +18,15 @@ export interface IAttemptWithStudent extends IAttempt {
     studentName: string;
 }
 
+export interface IStudentQuizResult {
+    canAnswer: boolean;
+    result: {
+        attempt: IAttempt;
+        correctCount: number | null;
+        totalQuestions: number | null;
+    } | null;
+}
+
 export interface ISubmitAttempt {
     quizId: number;
     answers: {

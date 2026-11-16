@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { createAttemptService, listAttemptByIdService, listAttemptsByQuizIdService, listAttemptsByStudentAndQuizIdService } from "../services/attemptService";
+import { createAttemptService, getQuizResultService, listAttemptByIdService, listAttemptsByQuizIdService, listAttemptsByStudentAndQuizIdService } from "../services/attemptService";
 import { attemptSchema } from "../schemas/attemptSchema";
 import { IPayload } from "../interfaces/IPayload";
 
@@ -51,6 +51,22 @@ export async function listAttemptsByStudentAndQuizIdController(request: FastifyR
         const logged = request.user as IPayload;
         const attempts = await listAttemptsByStudentAndQuizIdService(studentId, quizId, logged.sub);
         return reply.status(200).send(attempts);
+    } catch (error) {
+        return reply.status(404).send(error);
+    }
+}
+
+export async function getQuizResultController(request: FastifyRequest<{Params: {quizId: string}}>, reply: FastifyReply) {
+    try {
+        const quizId = Number(request.params.quizId);
+
+        if (!Number.isSafeInteger(quizId) || quizId <= 0) {
+            return reply.status(400).send({message: "ID do quiz inválido"});
+        }
+
+        const logged = request.user as IPayload;
+        const result = await getQuizResultService(quizId, logged.sub);
+        return reply.status(200).send(result);
     } catch (error) {
         return reply.status(404).send(error);
     }
