@@ -119,6 +119,12 @@ export async function createAttemptService(submission: ISubmitAttempt, studentId
         throw new Error("Quiz não encontrado");
     }
 
+    const approvedAttempt = await findApprovedAttemptByStudentAndQuizIdRepository(studentId, quiz.id);
+
+    if (approvedAttempt) {
+        throw new Error("Você já foi aprovado neste quiz");
+    }
+
     const questions = await listQuestionsByQuizIdRepository(quiz.id);
 
     if (questions.length === 0 || questions.length > 10) {

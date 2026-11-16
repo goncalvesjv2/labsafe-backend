@@ -80,8 +80,8 @@ export async function listAttemptsByQuizIdRepository(quizId: number): Promise<IA
     }));
 }
 
-export async function findApprovedAttemptByStudentAndQuizIdRepository(studentId: number, quizId: number): Promise<IAttempt | null> {
-    const attempt = await prisma.attempt.findFirst({
+export async function findApprovedAttemptByStudentAndQuizIdRepository(studentId: number, quizId: number, transaction: Prisma.TransactionClient = prisma): Promise<IAttempt | null> {
+    const attempt = await transaction.attempt.findFirst({
         where: { student_id: studentId, quiz_id: quizId, approved: true },
         orderBy: [{ created_at: "desc" }, { id: "desc" }]
     });
