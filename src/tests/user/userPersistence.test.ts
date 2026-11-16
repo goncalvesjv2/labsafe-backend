@@ -77,7 +77,7 @@ describe("updateUserRepository", () => {
         const { updateUserRepository } = await import("../../repositories/userRepository");
         const result = await updateUserRepository(7, user);
         expect(update).toHaveBeenCalledWith({
-            where: { id: 7 },
+            where: { id: 7, email: user.email },
             data: {
                 name: user.name,
                 email: user.email,
@@ -92,7 +92,7 @@ describe("updateUserRepository", () => {
         const input = { ...user, senha: "novo-hash", password: "NovaSenha123!", ativo: false };
         await updateUserRepository(7, input);
         expect(update).toHaveBeenCalledWith({
-            where: { id: 7 },
+            where: { id: 7, email: user.email },
             data: {
                 name: user.name,
                 email: user.email,

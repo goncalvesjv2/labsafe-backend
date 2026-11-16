@@ -13,6 +13,7 @@ import { createLogService } from "../../services/logService";
 import { sendEmailService } from "../../services/emailService";
 import { acceptUserInvitationService } from "../../services/userService";
 import { generateInvitation } from "../../utils/invitation";
+import { generatePasswordReset } from "../../utils/passwordReset";
 
 jest.mock("../../services/emailService", () => ({
     sendEmailService: jest.fn().mockResolvedValue({ messageId: "email-teste" })
@@ -763,7 +764,132 @@ describe("Teste de integração de usuários", () => {
             expect(logs[0].description).toContain(user.email);
         });
 
-        test("Falha após gravar o log desfaz a edição do usuário e o log", async () => {
+        test("Alterar o e-mail invalida o convite antigo e permite reenviar para o novo endereço", async () => {
+            const invitation = generateInvitation("http://localhost:5173");
+            await prisma.usuario.update({
+                where: { id: user.id },
+                data: { senha: null, invitation_token_hash: invitation.tokenHash, invitation_expires_at: invitation.expiresAt }
+            });
+            const newEmail = `novo.convite.${randomUUID()}@example.com`;
+
+            const response = await app.inject({
+                method: "PATCH", url: `/api/users/${user.id}`,
+                headers: { authorization: `Bearer ${adminToken}` },
+                payload: { name: user.name, email: newEmail, role: UserRole.ALUNO }
+            });
+            expect(response.statusCode).toBe(200);
+            const savedUser = await prisma.usuario.findUniqueOrThrow({ where: { id: user.id } });
+            expect(savedUser.email).toBe(newEmail);
+            expect(savedUser.invitation_token_hash).toBeNull();
+            expect(savedUser.invitation_expires_at).toBeNull();
+            expect(savedUser.senha).toBeNull();
+
+            const accept = await app.inject({
+                method: "POST", url: "/auth/new-password",
+                payload: { token: invitation.token, password, confirmPassword: password }
+            });
+            expect(accept.statusCode).toBe(400);
+            expect(accept.json().message).toBe("Convite inválido ou expirado");
+
+            const resend = await app.inject({
+                method: "POST", url: `/api/users/${user.id}/invitations/resend`,
+                headers: { authorization: `Bearer ${adminToken}` }
+            });
+            expect(resend.statusCode).toBe(200);
+            expect(resend.json().invitationSent).toBe(true);
+            expect(sendEmailService).toHaveBeenLastCalledWith(expect.objectContaining({ to: newEmail }));
+        });
+
+        test("Alterar o e-mail invalida a recuperação antiga e permite solicitar pelo novo endereço", async () => {
+            const recovery = generatePasswordReset("http://localhost:5173");
+            await prisma.usuario.update({
+                where: { id: user.id },
+                data: { password_reset_token_hash: recovery.tokenHash, password_reset_expires_at: recovery.expiresAt }
+            });
+            const newEmail = `nova.recuperacao.${randomUUID()}@example.com`;
+
+            const response = await app.inject({
+                method: "PATCH", url: `/api/users/${user.id}`,
+                headers: { authorization: `Bearer ${adminToken}` },
+                payload: { name: user.name, email: newEmail, role: UserRole.ALUNO }
+            });
+            expect(response.statusCode).toBe(200);
+            const savedUser = await prisma.usuario.findUniqueOrThrow({ where: { id: user.id } });
+            expect(savedUser.email).toBe(newEmail);
+            expect(savedUser.password_reset_token_hash).toBeNull();
+            expect(savedUser.password_reset_expires_at).toBeNull();
+            expect(savedUser.senha).toBe(user.senha);
+
+            const reset = await app.inject({
+                method: "POST", url: "/auth/reset-password",
+                payload: { token: recovery.token, password: "NovaSenha123!", confirmPassword: "NovaSenha123!" }
+            });
+            expect(reset.statusCode).toBe(400);
+            expect(reset.json().message).toBe("Link de recuperação inválido ou expirado");
+
+            const forgot = await app.inject({ method: "POST", url: "/auth/forgot-password", payload: { email: newEmail } });
+            expect(forgot.statusCode).toBe(200);
+            expect(sendEmailService).toHaveBeenLastCalledWith(expect.objectContaining({ to: newEmail }));
+            const afterRecovery = await prisma.usuario.findUniqueOrThrow({ where: { id: user.id } });
+            expect(afterRecovery.password_reset_token_hash).not.toBeNull();
+            expect(afterRecovery.password_reset_token_hash).not.toBe(recovery.tokenHash);
+            expect(afterRecovery.senha).toBe(user.senha);
+        });
+
+        test("Editar nome e cargo mantendo o mesmo e-mail preserva os links", async () => {
+            const invitation = generateInvitation("http://localhost:5173");
+            const recovery = generatePasswordReset("http://localhost:5173");
+            const links = {
+                invitation_token_hash: invitation.tokenHash,
+                invitation_expires_at: invitation.expiresAt,
+                password_reset_token_hash: recovery.tokenHash,
+                password_reset_expires_at: recovery.expiresAt
+            };
+            await prisma.usuario.update({ where: { id: user.id }, data: links });
+
+            const response = await app.inject({
+                method: "PATCH", url: `/api/users/${user.id}`,
+                headers: { authorization: `Bearer ${adminToken}` },
+                payload: { name: "Nome Atualizado", email: `  ${user.email.toUpperCase()}  `, role: UserRole.PROFESSOR }
+            });
+            expect(response.statusCode).toBe(200);
+            const savedUser = await prisma.usuario.findUniqueOrThrow({ where: { id: user.id } });
+            expect(savedUser).toEqual(expect.objectContaining({
+                ...links, name: "Nome Atualizado", email: user.email, role: user_role.Professor_a_, senha: user.senha
+            }));
+        });
+
+        test("Tentar usar um e-mail já cadastrado preserva os dados e os links", async () => {
+            const invitation = generateInvitation("http://localhost:5173");
+            const recovery = generatePasswordReset("http://localhost:5173");
+            const before = await prisma.usuario.update({
+                where: { id: user.id },
+                data: {
+                    invitation_token_hash: invitation.tokenHash, invitation_expires_at: invitation.expiresAt,
+                    password_reset_token_hash: recovery.tokenHash, password_reset_expires_at: recovery.expiresAt
+                }
+            });
+
+            const response = await app.inject({
+                method: "PATCH", url: `/api/users/${user.id}`,
+                headers: { authorization: `Bearer ${adminToken}` },
+                payload: { name: "Outro Nome", email: admin.email, role: UserRole.PROFESSOR }
+            });
+            expect(response.statusCode).toBe(400);
+            expect(await prisma.usuario.findUniqueOrThrow({ where: { id: user.id } })).toEqual(before);
+            expect(await prisma.logs.count({ where: { user_id: admin.id, action: "ALTERACAO_USUARIO" } })).toBe(0);
+        });
+
+        test("Falha após gravar o log desfaz a edição, a invalidação dos links e o log", async () => {
+            const invitation = generateInvitation("http://localhost:5173");
+            const recovery = generatePasswordReset("http://localhost:5173");
+            const before = await prisma.usuario.update({
+                where: { id: user.id },
+                data: {
+                    invitation_token_hash: invitation.tokenHash, invitation_expires_at: invitation.expiresAt,
+                    password_reset_token_hash: recovery.tokenHash, password_reset_expires_at: recovery.expiresAt
+                }
+            });
             const updatedUser = { name: "Aluno Atualizado", email: `edicao.${randomUUID()}@example.com`, role: UserRole.PROFESSOR };
             jest.mocked(createLogService).mockImplementationOnce(async (log, transaction) => {
                 await originalCreateLogService(log, transaction);
@@ -776,7 +902,7 @@ describe("Teste de integração de usuários", () => {
             });
             expect(response.statusCode).toBe(400);
             expect(response.json().message).toBe("Falha ao concluir o log");
-            expect(await prisma.usuario.findUniqueOrThrow({ where: { id: user.id } })).toEqual(user);
+            expect(await prisma.usuario.findUniqueOrThrow({ where: { id: user.id } })).toEqual(before);
             expect(await prisma.logs.count({ where: { user_id: admin.id, action: "ALTERACAO_USUARIO" } })).toBe(0);
 
             const retry = await app.inject({
@@ -789,6 +915,10 @@ describe("Teste de integração de usuários", () => {
             expect(savedUser.email).toBe(updatedUser.email);
             expect(savedUser.role).toBe(user_role.Professor_a_);
             expect(savedUser.senha).toBe(user.senha);
+            expect(savedUser.invitation_token_hash).toBeNull();
+            expect(savedUser.invitation_expires_at).toBeNull();
+            expect(savedUser.password_reset_token_hash).toBeNull();
+            expect(savedUser.password_reset_expires_at).toBeNull();
             expect(await prisma.logs.count({ where: { user_id: admin.id, action: "ALTERACAO_USUARIO" } })).toBe(1);
         });
 
