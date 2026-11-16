@@ -239,7 +239,11 @@ export async function changeUserStatusService(id: number, ativo: boolean, userId
 
 export async function deleteUserService(id: number, userId: number) {
     if (id === userId) {
-        throw new Error("Você não pode excluir sua própria conta");
+        const user = await listUserByIdService(userId);
+
+        if (user.role === UserRole.ADMIN) {
+            throw new Error("Você não pode excluir sua própria conta");
+        }
     }
 
     const deleteUser = await deleteUserRepository(id);
