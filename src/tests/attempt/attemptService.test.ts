@@ -1,7 +1,7 @@
 /// <reference types="jest" />
 import { beforeEach, describe, expect, test } from "@jest/globals";
 import { createAttemptService, listAttemptByIdService, listAttemptsByQuizIdService, listAttemptsByStudentAndQuizIdService } from "../../services/attemptService";
-import { createAttemptRepository, listAttemptByIdRepository, listAttemptsByQuizIdRepository } from "../../repositories/attemptRepository";
+import { createAttemptRepository, findApprovedAttemptByStudentAndQuizIdRepository, listAttemptByIdRepository, listAttemptsByQuizIdRepository } from "../../repositories/attemptRepository";
 import { createAnswerRepository, listAnswersByAttemptIdRepository } from "../../repositories/answerRepository";
 import { listAlternativesByQuestionIdRepository } from "../../repositories/alternativeRepository";
 import { listQuestionsByQuizIdRepository } from "../../repositories/questionRepository";
@@ -18,7 +18,8 @@ jest.mock("../../database/prisma", () => ({
 jest.mock("../../repositories/attemptRepository", () => ({
     createAttemptRepository: jest.fn(),
     listAttemptByIdRepository: jest.fn(),
-    listAttemptsByQuizIdRepository: jest.fn()
+    listAttemptsByQuizIdRepository: jest.fn(),
+    findApprovedAttemptByStudentAndQuizIdRepository: jest.fn()
 }));
 jest.mock("../../repositories/answerRepository", () => ({
     createAnswerRepository: jest.fn(),
@@ -33,6 +34,7 @@ jest.mock("../../services/logService", () => ({ createLogService: jest.fn() }));
 const createAttemptMock = jest.mocked(createAttemptRepository);
 const listAttemptByIdMock = jest.mocked(listAttemptByIdRepository);
 const listAttemptsByQuizIdMock = jest.mocked(listAttemptsByQuizIdRepository);
+const findApprovedAttemptMock = jest.mocked(findApprovedAttemptByStudentAndQuizIdRepository);
 const createAnswerMock = jest.mocked(createAnswerRepository);
 const listAnswersMock = jest.mocked(listAnswersByAttemptIdRepository);
 const listAlternativesMock = jest.mocked(listAlternativesByQuestionIdRepository);
@@ -79,6 +81,7 @@ beforeEach(() => {
     listUserByIdMock.mockResolvedValue(student);
     listQuizByIdMock.mockResolvedValue(quiz);
     listQuestionsMock.mockResolvedValue(questions);
+    findApprovedAttemptMock.mockResolvedValue(null);
     listAlternativesMock.mockImplementation(async (questionId) => [
         { id: questionId * 10 + 1, questionId, text: "Correta", correct: true },
         { id: questionId * 10 + 2, questionId, text: "Incorreta", correct: false }
@@ -180,15 +183,23 @@ describe("Criação de tentativas", () => {
         expect(result.correctCount).toBe(0);
     });
 
-    test("deve criar outra tentativa quando o aluno envia o quiz novamente", async () => {
-        createAttemptMock.mockResolvedValueOnce(savedAttempt);
+    test("deve criar outra tentativa quando o aluno ainda não foi aprovado", async () => {
+        createAttemptMock.mockResolvedValueOnce({ ...savedAttempt, score: 0, approved: false, correctCount: 0 });
         createAttemptMock.mockResolvedValueOnce({ ...savedAttempt, id: 2 });
-        const first = await createAttemptService(input, student.id);
+        const incorrectInput = { ...input, answers: input.answers.map((answer) => ({ ...answer, alternativeId: answer.alternativeId + 1 })) };
+        const first = await createAttemptService(incorrectInput, student.id);
         const second = await createAttemptService(input, student.id);
         expect(first.attempt.id).toBe(1);
         expect(second.attempt.id).toBe(2);
         expect(createAttemptMock).toHaveBeenCalledTimes(2);
         expect(createAnswerMock.mock.calls[1][0][0].attemptId).toBe(2);
+    });
+
+    test("deve impedir nova tentativa de aluno aprovado antes de corrigir as respostas", async () => {
+        findApprovedAttemptMock.mockResolvedValue(savedAttempt);
+        await expect(createAttemptService(input, student.id)).rejects.toThrow("Você já foi aprovado neste quiz");
+        expect(listQuestionsMock).not.toHaveBeenCalled();
+        expectNoWrites();
     });
 
     test("deve aceitar respostas enviadas em outra ordem", async () => {

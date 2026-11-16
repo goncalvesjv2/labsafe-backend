@@ -280,6 +280,32 @@ describe("Testes de integração de tentativas", () => {
         expect(await prisma.answer.count({ where: { attempt: { quiz_id: quiz.id } } })).toBe(6);
     });
 
+    test("deve bloquear novas respostas apos a aprovacao sem gravar tentativa, respostas ou log de sucesso", async () => {
+        const { quiz, correctAnswers, incorrectAnswers } = await createQuiz();
+        expect((await sendAttempt(quiz.id, correctAnswers)).statusCode).toBe(201);
+
+        for (const answers of [correctAnswers, incorrectAnswers]) {
+            const response = await sendAttempt(quiz.id, answers);
+            expect(response.statusCode).toBe(400);
+            expect(response.json().message).toBe("Você já foi aprovado neste quiz");
+        }
+
+        expect(await prisma.attempt.count({ where: { quiz_id: quiz.id, student_id: studentId } })).toBe(1);
+        expect(await prisma.answer.count({ where: { attempt: { quiz_id: quiz.id } } })).toBe(3);
+        expect(await prisma.logs.count({ where: { user_id: studentId, action: "CADASTRO_TENTATIVA", description: { endsWith: `no quiz de ID ${quiz.id}` } } })).toBe(1);
+    });
+
+    test("deve bloquear novos envios mesmo quando a aprovacao antiga nao possui contagens", async () => {
+        const { quiz, correctAnswers } = await createQuiz();
+        await prisma.attempt.create({ data: { quiz_id: quiz.id, student_id: studentId, score: 100, approved: true } });
+
+        const response = await sendAttempt(quiz.id, correctAnswers);
+        expect(response.statusCode).toBe(400);
+        expect(response.json().message).toBe("Você já foi aprovado neste quiz");
+        expect(await prisma.attempt.count({ where: { quiz_id: quiz.id, student_id: studentId } })).toBe(1);
+        expect(await prisma.answer.count({ where: { attempt: { quiz_id: quiz.id } } })).toBe(0);
+    });
+
     test("deve aceitar um quiz com dez questões", async () => {
         const { quiz, correctAnswers } = await createQuiz(10);
         const response = await sendAttempt(quiz.id, correctAnswers);
