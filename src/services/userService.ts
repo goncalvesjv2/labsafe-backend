@@ -182,19 +182,21 @@ export async function updateUserService(id: number, user: UpdateUser, userId: nu
         }
     }
 
-    const updateUser = await updateUserRepository(id, user);
-    
-    if (!updateUser) {
-        throw new Error("Usuário não encontrado");
-    }
-    
-    await createLogService({
-        userId: userId,
-        action: "ALTERACAO_USUARIO",
-        description: `O usúario com o e-mail ${updateUser.email} foi atualizado`
-    });
+    return prisma.$transaction(async (transaction) => {
+        const updateUser = await updateUserRepository(id, user, transaction);
 
-    return updateUser;
+        if (!updateUser) {
+            throw new Error("Usuário não encontrado");
+        }
+
+        await createLogService({
+            userId: userId,
+            action: "ALTERACAO_USUARIO",
+            description: `O usuário com o e-mail ${updateUser.email} foi atualizado`
+        }, transaction);
+
+        return updateUser;
+    });
 }
 
 export async function changeUserStatusService(id: number, ativo: boolean, userId: number) {
