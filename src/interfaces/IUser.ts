@@ -12,6 +12,7 @@ export interface IUser extends ICreateUser {
 }
 
 export interface IUserResponse {
+    hasPassword?: boolean;
     id: number;
     name: string;
     email: string;
