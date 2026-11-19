@@ -14,7 +14,10 @@ import { attemptRoutes } from "./routes/attemptRoutes";
 export const app = Fastify({ logger: true });
 
 app.register(fastifyCors, {
-    origin: "http://localhost:5173",
+    origin: [
+        "http://localhost:5173",
+        "https://labsafe-frontend.vercel.app"
+    ],
     methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"]
 })
 
