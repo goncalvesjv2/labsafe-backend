@@ -17,10 +17,12 @@ describe("Testes de integração do quiz", () => {
         });
         expect(response.statusCode).toBe(201);
         const body = response.json();
-        expect(body).toEqual({ id: expect.any(Number), contentId: content.id, teacherId: context.teacherId });
+        expect(body).toEqual({ id: expect.any(Number), contentId: content.id, teacherId: context.teacherId, createdAt: expect.any(String) });
         const savedQuiz = await prisma.quiz.findUniqueOrThrow({ where: { id: body.id } });
         expect(savedQuiz.conteudo_id).toBe(content.id);
         expect(savedQuiz.professor_id).toBe(context.teacherId);
+        expect(savedQuiz.created_at).toBeInstanceOf(Date);
+        expect(body.createdAt).toBe(savedQuiz.created_at?.toISOString());
         const logs = await prisma.logs.findMany({
             where: { user_id: context.teacherId, action: "CADASTRO_QUIZ", description: { contains: `quiz de ID ${body.id} ` } }
         });

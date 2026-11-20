@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { describe, expect, test } from "@jest/globals";
 import { app } from "../../../app";
+import { prisma } from "../../../database/prisma";
 import { setupQuizIntegration } from "./helpers/setupQuizIntegration";
 
 describe("Testes de integração do quiz", () => {
@@ -16,7 +17,7 @@ describe("Testes de integração do quiz", () => {
             });
             expect(response.statusCode).toBe(200);
             const body = response.json();
-            expect(body).toContainEqual({ id: quiz.id, contentId: content.id, teacherId: context.teacherId });
+            expect(body).toContainEqual({ id: quiz.id, contentId: content.id, teacherId: context.teacherId, createdAt: quiz.created_at?.toISOString() });
         }
     }, 30000);
 
@@ -29,7 +30,21 @@ describe("Testes de integração do quiz", () => {
                 headers: { authorization: `Bearer ${token}` }
             });
             expect(response.statusCode).toBe(200);
-            expect(response.json()).toEqual({ id: quiz.id, contentId: content.id, teacherId: context.teacherId });
+            expect(response.json()).toEqual({ id: quiz.id, contentId: content.id, teacherId: context.teacherId, createdAt: quiz.created_at?.toISOString() });
         }
+    }, 30000);
+
+    test("retorna data nula para um quiz sem data de criação conhecida", async () => {
+        const { quiz } = await context.createQuizFixture();
+        await prisma.quiz.update({ where: { id: quiz.id }, data: { created_at: null } });
+
+        const response = await app.inject({
+            method: "GET",
+            url: `/api/quizzes/${quiz.id}`,
+            headers: { authorization: `Bearer ${context.teacherToken}` }
+        });
+
+        expect(response.statusCode).toBe(200);
+        expect(response.json().createdAt).toBeNull();
     }, 30000);
 });

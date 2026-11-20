@@ -17,10 +17,11 @@ describe("Testes de integração do quiz", () => {
             payload: { contentId: targetContent.id, teacherId: context.otherTeacherId }
         });
         expect(response.statusCode).toBe(200);
-        expect(response.json()).toEqual({ id: quiz.id, contentId: targetContent.id, teacherId: context.teacherId });
+        expect(response.json()).toEqual({ id: quiz.id, contentId: targetContent.id, teacherId: context.teacherId, createdAt: quiz.created_at?.toISOString() });
         const savedQuiz = await prisma.quiz.findUniqueOrThrow({ where: { id: quiz.id } });
         expect(savedQuiz.conteudo_id).toBe(targetContent.id);
         expect(savedQuiz.professor_id).toBe(context.teacherId);
+        expect(savedQuiz.created_at).toEqual(quiz.created_at);
         expect(await prisma.quiz.findUnique({ where: { conteudo_id: content.id } })).toBeNull();
         const logs = await prisma.logs.findMany({
             where: { user_id: context.teacherId, action: "ALTERACAO_QUIZ", description: { contains: `quiz de ID ${quiz.id},` } }
@@ -37,7 +38,7 @@ describe("Testes de integração do quiz", () => {
             payload: { contentId: content.id }
         });
         expect(response.statusCode).toBe(200);
-        expect(response.json()).toEqual({ id: quiz.id, contentId: content.id, teacherId: context.teacherId });
+        expect(response.json()).toEqual({ id: quiz.id, contentId: content.id, teacherId: context.teacherId, createdAt: quiz.created_at?.toISOString() });
         expect(await prisma.quiz.count({ where: { conteudo_id: content.id } })).toBe(1);
     }, 30000);
 
