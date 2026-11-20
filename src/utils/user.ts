@@ -27,6 +27,7 @@ export function formatUser(user: IUserFormat) {
         email: user.email,
         role: mapUserRole(user.role),
         ativo: user.ativo,
-        hasPassword: user.senha !== null
+        hasPassword: user.senha !== null,
+        createdAt: user.created_at ?? null
     };
 }

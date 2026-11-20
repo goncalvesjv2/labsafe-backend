@@ -23,6 +23,7 @@ model usuario {
   senha                     String?    @db.VarChar(255)
   role                      user_role
   ativo                     Boolean    @default(true)
+  created_at                DateTime?  @default(now()) @db.Timestamptz(6)
   invitation_token_hash     String?    @unique @db.VarChar(64)
   invitation_expires_at     DateTime?  @db.Timestamptz(6)
   password_reset_token_hash String?    @unique @db.VarChar(64)

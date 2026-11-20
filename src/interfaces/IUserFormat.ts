@@ -7,4 +7,5 @@ export interface IUserFormat {
     senha: string | null;
     role: user_role;
     ativo: boolean;
+    created_at?: Date | null;
 }
