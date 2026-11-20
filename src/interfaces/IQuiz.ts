@@ -5,4 +5,5 @@ export interface ICreateQuiz {
 export interface IQuiz extends ICreateQuiz {
     id: number;
     teacherId: number;
+    createdAt?: Date | null;
 }

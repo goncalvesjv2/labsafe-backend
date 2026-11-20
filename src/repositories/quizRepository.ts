@@ -7,7 +7,8 @@ export async function listQuizzesRepository(): Promise<IQuiz[]> {
     return quizzes.map((quiz) => ({
         id: quiz.id,
         contentId: quiz.conteudo_id,
-        teacherId: quiz.professor_id
+        teacherId: quiz.professor_id,
+        createdAt: quiz.created_at
     }));
 }
 
@@ -19,7 +20,8 @@ export async function listQuizByIdRepository(id: number): Promise<IQuiz | null> 
     return quiz ? {
         id: quiz.id,
         contentId: quiz.conteudo_id,
-        teacherId: quiz.professor_id
+        teacherId: quiz.professor_id,
+        createdAt: quiz.created_at
     } : null;
 }
 
@@ -31,7 +33,8 @@ export async function listQuizByContentIdRepository(contentId: number): Promise<
     return quiz ? {
         id: quiz.id,
         contentId: quiz.conteudo_id,
-        teacherId: quiz.professor_id
+        teacherId: quiz.professor_id,
+        createdAt: quiz.created_at
     } : null;
 }
 
@@ -46,7 +49,8 @@ export async function createQuizRepository(quiz: ICreateQuiz, teacherId: number)
     return {
         id: newQuiz.id,
         contentId: newQuiz.conteudo_id,
-        teacherId: newQuiz.professor_id
+        teacherId: newQuiz.professor_id,
+        createdAt: newQuiz.created_at
     };
 }
 
@@ -61,7 +65,8 @@ export async function updateQuizRepository(id: number, quiz: ICreateQuiz): Promi
     return {
         id: updatedQuiz.id,
         contentId: updatedQuiz.conteudo_id,
-        teacherId: updatedQuiz.professor_id
+        teacherId: updatedQuiz.professor_id,
+        createdAt: updatedQuiz.created_at
     };
 }
 

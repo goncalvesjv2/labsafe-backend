@@ -60,6 +60,7 @@ CREATE DATABASE labsafe;
 \i prisma/migrations/012_add_attempt_counts.sql
 \i prisma/migrations/013_cascade_user_deletion.sql
 \i prisma/migrations/014_add_user_created_at.sql
+\i prisma/migrations/015_add_quiz_created_at.sql
 \q
 ```
 
@@ -69,15 +70,18 @@ Os exemplos usam o usuário `postgres` e a porta `5432`. Se forem diferentes na 
 
 ### Atualizar um banco existente
 
-Para um banco que já está em uso, inclusive no Render, faça um backup e aplique somente a nova migração, uma única vez, antes de publicar o backend atualizado:
+Para um banco que já está em uso, inclusive no Render, faça um backup e aplique somente as migrações pendentes, uma única vez, antes de publicar o backend atualizado:
 
 ```bash
 psql "URL_DE_CONEXAO_DO_BANCO" -v ON_ERROR_STOP=1 -f prisma/migrations/014_add_user_created_at.sql
+psql "URL_DE_CONEXAO_DO_BANCO" -v ON_ERROR_STOP=1 -f prisma/migrations/015_add_quiz_created_at.sql
 ```
 
-Substitua `URL_DE_CONEXAO_DO_BANCO` pela conexão do ambiente que deseja atualizar. Não execute novamente os scripts de criação das tabelas. Essa migração pressupõe que as alterações anteriores já foram aplicadas.
+Substitua `URL_DE_CONEXAO_DO_BANCO` pela conexão do ambiente que deseja atualizar. Se a migração 014 já foi aplicada, execute apenas a 015. Não execute novamente os scripts de criação das tabelas. Esses exemplos pressupõem que as alterações anteriores já foram aplicadas.
 
 Usuários existentes permanecem com `created_at` nulo. Os novos cadastros recebem a data automaticamente. O gráfico mensal considera apenas usuários com data conhecida, que continuam cadastrados; registros excluídos não são contabilizados. Depois da migração, gere o Prisma Client com o comando da próxima seção.
+
+A migração 015 faz o mesmo para quizzes: os existentes permanecem com data desconhecida e novos quizzes recebem a data de criação automaticamente. A API retorna esse campo como `createdAt` e preserva a data ao editar o quiz.
 
 ## 3. Gerar o Prisma e iniciar
 
