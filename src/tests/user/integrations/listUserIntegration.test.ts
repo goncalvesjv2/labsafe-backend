@@ -31,6 +31,9 @@ describe("Teste de integração de usuários", () => {
         expect(createResponse.statusCode).toBe(201);
         const createdUser = createResponse.json();
 
+        expect(createdUser.createdAt).toEqual(expect.any(String));
+        expect(Number.isNaN(new Date(createdUser.createdAt).getTime())).toBe(false);
+
         const response = await app.inject({
             method: "GET",
             url: "/api/users",
@@ -42,7 +45,8 @@ describe("Teste de integração de usuários", () => {
             id: createdUser.id,
             name: user.name,
             email: context.listEmail,
-            role: user.role
+            role: user.role,
+            createdAt: createdUser.createdAt
         }));
     }, 30000);
 

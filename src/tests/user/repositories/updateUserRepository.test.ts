@@ -44,7 +44,7 @@ describe("updateUserRepository", () => {
                 role: user_role.Professor_a_
             }
         });
-        expect(result).toEqual({ id: 7, ...user, ativo: true, hasPassword: true });
+        expect(result).toEqual({ id: 7, ...user, ativo: true, hasPassword: true, createdAt: null });
     });
 
     test("deve atualizar apenas nome, e-mail e cargo mesmo recebendo campos extras", async () => {

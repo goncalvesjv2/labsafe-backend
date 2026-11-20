@@ -37,5 +37,6 @@ describe("Teste de persistência - usuário", () => {
         expect(user).not.toBeNull();
         expect(user?.email).toBe(email);
         expect(user?.name).toBe("Usuário Teste");
+        expect(user?.created_at).toBeInstanceOf(Date);
     });
 });

@@ -25,6 +25,23 @@ describe("Password status in public user responses", () => {
             role: UserRole.ALUNO,
             ativo: true,
             hasPassword,
+            createdAt: null,
         });
+    });
+
+    test("retorna a data de cadastro quando ela é conhecida", () => {
+        const createdAt = new Date("2026-11-20T12:00:00.000Z");
+        const user = {
+            id: 8,
+            name: "Usuário com data",
+            email: "data@example.test",
+            role: user_role.Aluno_a_,
+            ativo: true,
+            senha: null,
+            created_at: createdAt
+        };
+
+        expect(formatUser(user).createdAt).toEqual(createdAt);
+        expect(formatUser({ ...user, created_at: null }).createdAt).toBeNull();
     });
 });
