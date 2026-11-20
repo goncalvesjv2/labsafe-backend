@@ -10,6 +10,7 @@ import { quizRoutes } from "./routes/quizRoutes";
 import { questionRoutes } from "./routes/questionRoutes";
 import { alternativeRoutes } from "./routes/alternativeRoutes";
 import { attemptRoutes } from "./routes/attemptRoutes";
+import { logRoutes } from "./routes/logRoutes";
 
 export const app = Fastify({ logger: true });
 
@@ -39,3 +40,4 @@ app.register(quizRoutes, { prefix: "/api" });
 app.register(questionRoutes, { prefix: "/api" });
 app.register(alternativeRoutes, { prefix: "/api" });
 app.register(attemptRoutes, { prefix: "/api" });
+app.register(logRoutes, { prefix: "/api" });
